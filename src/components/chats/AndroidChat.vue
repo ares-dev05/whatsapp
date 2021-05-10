@@ -340,7 +340,7 @@ export default {
       let self = this
       let replaced = message.replace(/:(\d*?):/g, function(a, b){
         if(self.emojis[b]!==undefined) {
-          return '<img style="display: inline; height: 16px; margin: 0 2px;" src="android/' + self.emojis[b] + '" />';
+          return '<img style="display: inline; height: 22px; margin: 0 2px;position: relative; vertical-align: middle;" src="android/' + self.emojis[b] + '" />';
         } else {
           return message
         }
