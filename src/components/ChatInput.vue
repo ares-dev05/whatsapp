@@ -43,7 +43,7 @@
     </span>
     </label>
     <form v-on:submit="submitform">
-      <input type="text" v-model="newmessageinput" class="text-input-message" placeholder="Nachricht"/>
+      <input type="text" ref="newmessageinput" v-model="newmessageinput" class="text-input-message" placeholder="Nachricht"/>
     </form>
     <span class="text-input-icon right" @click="addmessage">
       <i class="material-icons">send</i>
@@ -54,7 +54,7 @@
     <div class="icons" v-if="displayicon">
       <span class="material-icons" v-show="page > 0" @click="page--">navigate_before</span>
       <span class="material-icons" v-show="page < maxPages" @click="page++">navigate_next</span>
-      <img :src="selectedOs + '/' + value" @click="newmessageinput += ':' + indx + ':'" :title="value" v-for="(value, indx) in displayIcons" :key="'icon_'+indx" width="32px" height="32px"/>
+      <img :src="selectedOs + '/' + value" @click="selectEmojis(indx)" :title="value" v-for="(value, indx) in displayIcons" :key="'icon_'+indx" width="32px" height="32px"/>
     </div>
   </div>
 </template>
@@ -160,6 +160,11 @@ export default {
     updateState(indx, value) {
       this.localValue[indx].state = value
       this.$emit('input', this.localValue)
+    },
+    selectEmojis(indx) {
+      let messageInput = this.$refs.newmessageinput;
+      let cursorPosition = messageInput.selectionStart;
+      this.newmessageinput = this.newmessageinput.substr(0, cursorPosition) + ':' + indx + ':' + this.newmessageinput.substr(cursorPosition, messageInput.length);
     }
   }
 }
