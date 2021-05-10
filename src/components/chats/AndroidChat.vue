@@ -70,17 +70,21 @@
                 <img :class="[(chat.images.length > 4 && imgindx === 3)?'imgage-blur':'']" :src="img" style="width: 100%; height: 100%; object-fit: cover"/>
               </div>
             </div>
-            <span v-html="replaceEmojis(chat.message)">
+            <span v-html="replaceEmojis(chat.message) + generateMessageTime(chat)">
             </span>
-            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'no-text':'']">{{ chat.time.slice(0,5) }}
-                <span v-if="chat.sender">
+            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'no-text':'']">
+              {{ chat.time.slice(0,5) }}
+              <span v-if="chat.sender">
                 <i class="material-icons checkmark" v-if="chat.state==='read'">&#xe877;</i>
                 <i class="material-icons" v-else-if="chat.state==='received'">&#xe877;</i>
                 <i class="material-icons" v-else>&#xe876;</i>
-                </span></span>
+              </span>
+            </span>
           </div>
-          <div class="whatsapp-chat-message whatsapp-chat-messages__receiver" id="last-chat-element-android" style="height: 1px;margin-top:30px;visibility: hidden"><span class="whatsapp-chat-messages__datetime">
-                </span></div>
+          <div class="whatsapp-chat-message whatsapp-chat-messages__receiver" id="last-chat-element-android" style="height: 1px;margin-top:30px;visibility: hidden">
+            <span class="whatsapp-chat-messages__datetime">
+            </span>
+          </div>
         </div>
       </div>
 
@@ -277,6 +281,11 @@ export default {
     })
   },
   methods: {
+    log(title, message) {
+      console.groupCollapsed(title);
+      console.log("message", message);
+      console.groupEnd();
+    },
     timeChanged() {
       let ele = document.getElementById("layout_time_android");
       const time = ele.innerText
@@ -301,18 +310,45 @@ export default {
         }
       },2000)
     },
+    generateMessageTime(chat) {
+      // let self = this;
+      if(chat.message.length > 0 || chat.images.length <= 1) {
+        let messageTime = '';
+        let css = 'visibility: hidden;font-size: 12px;margin-left: auto;padding-left: 10px;position: relative;bottom: -4px;margin-top: auto;color: rgba(0, 0, 0, 0.4);float:right;';
+        if(chat.message.length <=0 && chat.images.length > 0) {
+          css += 'color: #FFFFFF;margin-right: 5px;z-index: 2;';
+        }
+        
+        messageTime += '<div style="' + css + '" >' + chat.time.slice(0,5);
+        if(chat.sender) {
+          css = 'font-size: 16px;color: rgba(0, 0, 0, 0.4);position: relative;top: 3px;';
+          if(chat.state==='read') {
+            css += 'color: var(--whatsapp-chat-checkmark);';
+            messageTime += "<i class='material-icons checkmark' style='" + css + "'>&#xe877;</i>"
+          } else if(chat.state==='received') {
+            messageTime += "<i class='material-icons' style='" + css + "'>&#xe877;</i>"
+          } else {
+            messageTime += "<i class='material-icons' style='" + css + "'>&#xe876;</i>"
+          }
+        }
+        return messageTime + "</div>" + "</div>";
+      } else {
+        return "" + "</div>";
+      }
+    },
     replaceEmojis(message) {
       let self = this
       let replaced = message.replace(/:(\d*?):/g, function(a, b){
         if(self.emojis[b]!==undefined) {
-          return '</div><img style="display: inline; float: left; height: 16px; margin: 0 2px;" src="android/' + self.emojis[b] + '" /><div style="float: left; display: inline;">';
+          return '<img style="display: inline; height: 16px; margin: 0 2px;" src="android/' + self.emojis[b] + '" />';
         } else {
           return message
         }
       })
+      self.log("replace", replaced);
       if(!replaced.startsWith("<div style"))
       {
-        replaced = "<div style='float: left; display: inline;'>" + replaced + "</div>"
+        replaced = "<div style='font-size: 18px;float: left; display: inline;'>" + replaced;
       }
       return replaced
     },
@@ -422,7 +458,7 @@ input, button, textarea {
 
 .whatsapp-chat {
   width: 100%;
-  height: 147.7mm;
+  height: 151.7mm;
   background: center center/cover no-repeat;
   margin: 0 auto;
   position: relative;
@@ -537,7 +573,7 @@ input, button, textarea {
   flex-wrap: wrap;
   margin-top: 8px;
   border-radius: 5px;
-  font-size: 14px;
+  
   position: relative;
 }
 
@@ -551,10 +587,11 @@ input, button, textarea {
   font-size: 12px;
   margin-left: auto;
   padding-left: 10px;
-  position: relative;
-  top: 2px;
+  position: absolute;
+  bottom: 4px;
   margin-top: auto;
   color: rgba(0, 0, 0, 0.4);
+  right: 10px;
 }
 
 .whatsapp-image {

@@ -1,27 +1,77 @@
 <template>
   <div class="container">
-    <div class="head-row" style="margin: auto;">
-      <h1 style="size: 2em;color: #FFFFFF;margin:50px auto; padding: 20px;float: left;">
+    <div class="head-row" style="margin: auto">
+      <h1
+        style="
+          size: 2em;
+          color: #ffffff;
+          margin: 50px auto;
+          padding: 20px;
+          float: left;
+        "
+      >
         <span>Whatsapp Chat Generator</span>
         <div class="print-button">
-          <button class="print-button__content" @click="makeScreen">Screenshot erstellen und Herunterladen</button>
-          <a style="display: none;" id="create_screenshot_and_print" download="screenshot.png"></a>
+          <button class="print-button__content" @click="makeScreen">
+            Screenshot erstellen und Herunterladen
+          </button>
+          <a
+            style="display: none"
+            id="create_screenshot_and_print"
+            download="screenshot.png"
+          ></a>
         </div>
       </h1>
     </div>
-    <div class="head-row" style="margin: auto;width: 100%;">
+    <div class="head-row" style="margin: auto; width: 100%">
       <nav class="actions">
-        <input type="radio" v-model="selectedOS" id="android" value="android">
+        <input type="radio" v-model="selectedOS" id="android" value="android" />
         <label for="android">Android</label>
-        <input type="radio" v-model="selectedOS" id="ios" value="ios">
+        <input type="radio" v-model="selectedOS" id="ios" value="ios" />
         <label for="ios">iOS</label>
       </nav>
     </div>
     <div class="editor-row">
-      <ChatInput :selectedOs="selectedOS" :emojis="IconList" :is-sender="false" @input="generateChat" :value="chatLeft" headline="Links" identifier="left"/>
-      <AndroidChat :emojis="IconListAndroid" :profile-picture="profilePicture" :background-image="background" :time="time" :lastSeen="lastSeen" :name="name" v-show="selectedOS==='android'" id="chat_to_print_android" :chats="chats"/>
-      <iOSChat :emojis="IconList" :profile-picture="profilePicture" :background-image="background" :time="time" :lastSeen="lastSeen" :name="name" v-show="selectedOS==='ios'" id="chat_to_print_ios" :chats="chats"/>
-      <ChatInput :selectedOs="selectedOS" :emojis="IconList" :is-sender="true" @input="generateChat" :value="chatRight" headline="Rechts" identifier="right"/>
+      <ChatInput
+        :selectedOs="selectedOS"
+        :emojis="IconList"
+        :is-sender="false"
+        @input="generateChat"
+        :value="chatLeft"
+        headline="Links"
+        identifier="left"
+      />
+      <AndroidChat
+        :emojis="IconListAndroid"
+        :profile-picture="profilePicture"
+        :background-image="background"
+        :time="time"
+        :lastSeen="lastSeen"
+        :name="name"
+        v-show="selectedOS === 'android'"
+        id="chat_to_print_android"
+        :chats="chats"
+      />
+      <iOSChat
+        :emojis="IconList"
+        :profile-picture="profilePicture"
+        :background-image="background"
+        :time="time"
+        :lastSeen="lastSeen"
+        :name="name"
+        v-show="selectedOS === 'ios'"
+        id="chat_to_print_ios"
+        :chats="chats"
+      />
+      <ChatInput
+        :selectedOs="selectedOS"
+        :emojis="IconList"
+        :is-sender="true"
+        @input="generateChat"
+        :value="chatRight"
+        headline="Rechts"
+        identifier="right"
+      />
     </div>
   </div>
 </template>
@@ -35,8 +85,8 @@ import IconList from "../../public/ios/icons.json";
 import IconListAndroid from "../../public/android/icons.json";
 
 export default {
-  name: 'Container',
-  components: {ChatInput, AndroidChat, iOSChat},
+  name: "Container",
+  components: { ChatInput, AndroidChat, iOSChat },
   data() {
     return {
       chatLeft: [],
@@ -44,65 +94,67 @@ export default {
       chats: [],
       name: "Name",
       lastSeen: "zuletzt online heute 11:21",
-      profilePicture: `${require('@/assets/images/no_profile_picture.png')}`,
-      background: `${require('@/assets/images/default_wallpaper_android.png')}`,
-      time: '11:50',
-      selectedOS: 'android',
+      profilePicture: `${require("@/assets/images/no_profile_picture.png")}`,
+      background: `${require("@/assets/images/default_wallpaper_android.png")}`,
+      time: "11:50",
+      selectedOS: "android",
       IconList,
-      IconListAndroid
-    }
+      IconListAndroid,
+    };
   },
   watch: {
     chatLeft() {
-      this.generateChat()
+      this.generateChat();
     },
     chatRight() {
-      this.generateChat()
-    }
+      this.generateChat();
+    },
   },
   methods: {
     setTime(time) {
-      this.time = time
+      this.time = time;
     },
     setBackground(background) {
-      this.background = background
+      this.background = background;
     },
     setProfilePicture(profilePicture) {
-      this.profilePicture = profilePicture
+      this.profilePicture = profilePicture;
     },
     setName(name) {
-      this.name = name
+      this.name = name;
     },
     setLastSeen(lastSeen) {
-      this.lastSeen = lastSeen
+      this.lastSeen = lastSeen;
     },
     makeScreen() {
-      let link = document.getElementById("create_screenshot_and_print")
-      html2canvas(document.querySelector("#chat_to_print_"+this.selectedOS),{
-        scale: 5,
+      let link = document.getElementById("create_screenshot_and_print");
+
+      html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
+        scale: 3,
         letterRendering: true,
-        allowTaint: true
-      }).then(canvas => {
+        allowTaint: true,
+        backgroundColor: "#000000",
+      }).then((canvas) => {
         link.href = canvas.toDataURL("image/png");
-        link.click()
+        link.click();
       });
     },
     generateChat() {
-      let tmpChatLeft = this.chatLeft
+      let tmpChatLeft = this.chatLeft;
       for (let i = 0; i < tmpChatLeft.length; i++) {
-        tmpChatLeft[i].sender = false
+        tmpChatLeft[i].sender = false;
       }
-      let tmpChatRight = this.chatRight
+      let tmpChatRight = this.chatRight;
       for (let j = 0; j < tmpChatRight.length; j++) {
-        tmpChatRight[j].sender = true
+        tmpChatRight[j].sender = true;
       }
-      let fullchat = tmpChatLeft.concat(tmpChatRight)
-      fullchat.sort(this.compareTwoTimes)
-      this.chats = fullchat
+      let fullchat = tmpChatLeft.concat(tmpChatRight);
+      fullchat.sort(this.compareTwoTimes);
+      this.chats = fullchat;
     },
     compareTwoTimes(a, b) {
-      const time_a = Date.parse('01/01/2011 ' + a.time)
-      const time_b = Date.parse('01/01/2011 ' + b.time)
+      const time_a = Date.parse("01/01/2011 " + a.time);
+      const time_b = Date.parse("01/01/2011 " + b.time);
       if (time_a < time_b) {
         return -1;
       }
@@ -110,9 +162,9 @@ export default {
         return 1;
       }
       return 0;
-    }
-  }
-}
+    },
+  },
+};
 </script>
 <style scoped>
 .container {
@@ -123,7 +175,7 @@ export default {
 
 .container .editor-row {
   display: grid;
-  grid-template-columns: 1fr calc(68.7mm * 1.5) 1fr;
+  grid-template-columns: 1fr calc(68.7mm * 1.62) 1fr;
   position: relative;
 }
 
@@ -154,7 +206,7 @@ export default {
   text-decoration: none;
   font-size: 25px;
   box-shadow: none;
-  border: 1px solid #FFFFFF;
+  border: 1px solid #ffffff;
   border-radius: 3px;
   transition: 0.3s;
   background: transparent;
@@ -164,19 +216,19 @@ export default {
   background-color: #c40004;
 }
 
-input[type='radio'] {
+input[type="radio"] {
   display: none;
 }
 
 label {
   padding: 10px;
   cursor: pointer;
-  color: #FFFFFF;
+  color: #ffffff;
   border: 1px solid rgba(254, 254, 254, 0.6);
   border-radius: 0;
 }
-input[type="radio"]:checked+label {
-  background: #FFFFFF;
+input[type="radio"]:checked + label {
+  background: #ffffff;
   color: #3a3c42;
 }
 .icons {
@@ -184,7 +236,7 @@ input[type="radio"]:checked+label {
   top: 0;
   padding: 20px;
   left: 0;
-  background: #FFFFFF;
+  background: #ffffff;
   width: 100%;
   margin: auto;
 }
