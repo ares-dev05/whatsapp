@@ -24,10 +24,13 @@
       </h1>
     </div>
     <div class="save-button">
-      <button class="save-button__content" @click="makeScreen">Save</button>
+      <button class="save-button__content" @click="makeSave">Save</button>
     </div>
     <div class="json-button">
       <button class="json-button__content" @click="makeJson">Json</button>
+    </div>
+    <div class="load-button">
+      <button class="load-button__content" @click="makeLoad">Load</button>
     </div>
     <div class="head-row" style="margin: auto; width: 100%">
       <nav class="actions">
@@ -108,7 +111,7 @@ export default {
       selectedOS: "android",
       IconList,
       IconListAndroid,
-      serverIp: "http://127.0.0.1"
+      serverIp: "http://192.168.109.22",
     };
   },
   watch: {
@@ -141,16 +144,13 @@ export default {
       this.lastSeen = lastSeen;
     },
     dataURItoBlob(dataURI) {
-      // convert base64/URLEncoded data component to raw binary data held in a string
       var byteString;
       if (dataURI.split(",")[0].indexOf("base64") >= 0)
         byteString = atob(dataURI.split(",")[1]);
       else byteString = unescape(dataURI.split(",")[1]);
 
-      // separate out the mime component
       var mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
 
-      // write the bytes of the string to a typed array
       var ia = new Uint8Array(byteString.length);
       for (var i = 0; i < byteString.length; i++) {
         ia[i] = byteString.charCodeAt(i);
@@ -164,16 +164,16 @@ export default {
 
       html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
         scale: 3,
-        letterRendering: true,
         allowTaint: true,
+        useCORS: true,
+        logging: true,
+        letterRendering: true,
         backgroundColor: "#000000",
       }).then((canvas) => {
         let url = canvas.toDataURL("image/png");
         link.href = url;
 
         canvas.toBlob(function (blob) {
-          // Do something with the blob object,
-          // e.g. create multipart form data for file uploads:
           var formData = new FormData();
           formData.append("file", blob, "image.jpg");
           axios
@@ -183,66 +183,143 @@ export default {
               },
             })
             .then(function (response) {
-              self.log("respone",response.data);
               self.screens.push({
                 file_id: response.data.file_id,
                 file_path: self.serverIp + response.data.file_path,
                 file_name: response.data.file_name,
-              })
-              // link.click();
+              });
+              link.click();
             })
             .catch(function (error) {
               alert(error);
             });
-          
-          // ...
-        }, "image/jpeg");
+        }, "image/png");
       });
     },
     download(filename, text) {
-      var element = document.createElement('a');
-      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-      element.setAttribute('download', filename);
-
-      element.style.display = 'none';
+      var element = document.createElement("a");
+      element.setAttribute(
+        "href",
+        "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+      );
+      element.setAttribute("download", filename);
+      element.style.display = "none";
       document.body.appendChild(element);
-
       element.click();
-
       document.body.removeChild(element);
-
     },
     makeJson() {
-      this.log("makeJson", this.screens);
-      if(this.screens.length == 0) {
+      if (this.screens.length == 0) {
         return;
       }
       var txtFile = new Date().getTime() + ".json";
-      var str = "{\"images\": {";
+      var str = '{"images": {';
       this.screens.forEach((screen, index) => {
-        this.log("screen", screen);
-        if(index == 0) {
-          str += "\"" + screen.file_id + "\": \"" + screen.file_path + "\"";
+        if (index == 0) {
+          str += '"' + screen.file_id + '": "' + screen.file_path + '"';
         } else {
-          str += ",\"" + screen.file_id + "\": \"" + screen.file_path + "\"";
+          str += ',"' + screen.file_id + '": "' + screen.file_path + '"';
         }
       });
-      str += "},\"thumbnail\": \"" + this.screens[0].file_id + "\",";
-      str += "\"desc\": \"Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\",";
-      str += "\"questions\": [";
+      str += '},"thumbnail": "' + this.screens[0].file_id + '",';
+      str +=
+        '"desc": "Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",';
+      str += '"questions": [';
       this.screens.forEach((screen, index) => {
-        if(index == 0) {
+        if (index == 0) {
           str += "{";
         } else {
           str += ", {";
         }
-        str += "\"images\": [" + screen.file_id + ", \"\"],";
-          str += "\"question\": \"Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\",";
-          str += "\"answers\": [\"Weiter\"]";
-          str += "}";
+        str += '"images": [' + screen.file_id + ', ""],';
+        str +=
+          '"question": "Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",';
+        str += '"answers": ["Weiter"]';
+        str += "}";
       });
-      str += "],\"results\": \"\",  \"lang\": \"ST\",\"is_wpquiz_export\": true}";
+      str += '],"results": "",  "lang": "ST","is_wpquiz_export": true}';
       this.download(txtFile, str);
+    },
+    makeSave() {
+      let self = this;
+
+      axios
+        .post(self.serverIp + "/api/message_deleteAll", {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+        .then(function () {
+          self.chats.forEach((chat) => {
+            var formData = new FormData();
+            let images = "";
+            chat.images.forEach((image) => {
+              images += image + ":::";
+            });
+            formData.append("images", images);
+            formData.append("sender", chat.sender === true ? "1" : "0");
+            formData.append("state", chat.state);
+            formData.append("time", chat.time);
+            formData.append("message", chat.message);
+            axios
+              .post(self.serverIp + "/api/message_insert", formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              })
+              .then(function (response) {
+                self.screens.push({
+                  file_id: response.data.file_id,
+                  file_path: self.serverIp + response.data.file_path,
+                  file_name: response.data.file_name,
+                });
+              })
+              .catch(function (error) {
+                alert(error);
+              });
+          });
+        })
+        .catch(function (error) {
+          alert(error);
+        });
+    },
+    makeLoad() {
+      let self = this;
+      axios
+        .post(self.serverIp + "/api/message_getAll", {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+        .then(function (response) {
+          response.data.forEach((message) => {
+            let images = message.images.split(":::");
+            images.pop();
+            if (message.sender === "1") {
+              self.chatRight.push({
+                message: message.message,
+                time: message.time,
+                images: images,
+                state: message.state,
+                sender: true,
+              });
+            } else {
+              self.chatLeft.push({
+                message: message.message,
+                time: message.time,
+                images: images,
+                state: message.state,
+                sender: false,
+              });
+            }
+          });
+          self.chatLeft.sort(self.compareTwoTimes);
+          self.chatRight.sort(self.compareTwoTimes);
+          self.generateChat();
+        })
+        .catch(function (error) {
+          alert(error);
+        });
     },
     generateChat() {
       let tmpChatLeft = this.chatLeft;
@@ -256,10 +333,6 @@ export default {
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
       this.chats = fullchat;
-      this.log(this.chats);
-      // while(this.chatRight.length > 0) {this.chatRight.pop();}
-      // while(this.chatLeft.length > 0) {this.chatLeft.pop();}
-      // while(this.chats.length > 0) {this.chats.pop();}
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -365,6 +438,34 @@ export default {
 }
 
 .json-button__content {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0.8rem 5.5rem 0.8rem 2.5rem;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  box-shadow: none;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  transition: 0.3s;
+  background: transparent;
+}
+
+.load-button {
+  position: absolute;
+  right: -5rem;
+  top: 17rem;
+}
+
+.load-button:hover {
+  right: -2rem;
+}
+
+.load-button__content:hover {
+  background-color: #c40004;
+}
+
+.load-button__content {
   display: inline-block;
   cursor: pointer;
   padding: 0.8rem 5.5rem 0.8rem 2.5rem;

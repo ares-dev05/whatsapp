@@ -70,7 +70,7 @@ export default {
     headline: String,
     emojis: Array,
     identifier: String,
-    isSender: Boolean
+    isSender: Boolean,    
   },
   data() {
     return {
@@ -80,7 +80,8 @@ export default {
       tmpFiles: [],
       displayicon: false,
       localSelectedMessage: -1,
-      page: 0
+      page: 0,
+      serverIp: "http://localhost"
     }
   },
   watch: {
@@ -122,10 +123,23 @@ export default {
       this.$refs['upload-image-to-message-'+this.identifier].click();
     },
     addImageToMessage(e) {
+      let self = this;
       for (let i = 0; i < e.target.files.length; i++) {
-        let url = URL.createObjectURL(e.target.files[i]);
-        this.log("addImageToMessage", url)
-        this.localValue[this.localSelectedMessage].images.push(url)
+        let formData = new FormData();
+        formData.append("file", e.target.files[i]);
+        axios
+          .post(self.serverIp + "/api/image_insert", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data"
+          }})
+          .then(function (response) {
+            let url =  self.serverIp + response.data.file_path;
+            self.localValue[self.localSelectedMessage].images.push(url)
+          })
+          .catch(function (error) {
+            self.log("error", error);
+          });
+        
       }
     },
     removeElement(i) {
@@ -156,22 +170,22 @@ export default {
       this.tmpFiles = []
     },
     addimage(e) {
+      let self = this;
       for (let i = 0; i < e.target.files.length; i++) {
         let formData = new FormData();
         formData.append("file", e.target.files[i]);
         axios
-          .post("http://127.0.0.1/api/screen_insert", formData, {
+          .post(self.serverIp + "/api/image_insert", formData, {
             headers: {
-              "Content-Type": "multipart/form-data",
+              "Content-Type": "multipart/form-data"
           }})
           .then(function (response) {
-            alert(response.data);
+            let url =  self.serverIp + response.data.file_path;
+            self.tmpFiles.push(url);
           })
           .catch(function (error) {
-            alert(error);
+            self.log("error", error);
           });
-        let url = URL.createObjectURL(e.target.files[i]);
-        this.tmpFiles.push(url);
       }
     },
     removeImage(indx, i) {
