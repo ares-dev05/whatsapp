@@ -12,7 +12,8 @@
           <option value="received" style="color: #000000" class="material-icons" :selected="item.state==='received'">&#xe877;</option>
           <option class="material-icons checkmark" value="read" :selected="item.state==='read'">&#xe877;</option>
         </select>
-        <input class="empty-input" @change="updateValue" v-model="localValue[indx].message"/><input
+        <input class="empty-input" @change="updateValue" v-model="localValue[indx].message"/>
+        <input
           @change="updateValue"
           class="empty-input"
           placeholder="Nachricht einfügen"
@@ -60,6 +61,7 @@
 </template>
 
 <script>
+import axios from "axios";
 export default {
   name: "ChatInput",
   props: {
@@ -110,13 +112,20 @@ export default {
     }
   },
   methods: {
+    log(title, message) {
+      console.groupCollapsed(title);
+      console.log("message", message);
+      console.groupEnd();
+    },
     addMessageImage(indx) {
       this.localSelectedMessage = indx
       this.$refs['upload-image-to-message-'+this.identifier].click();
     },
     addImageToMessage(e) {
       for (let i = 0; i < e.target.files.length; i++) {
-        this.localValue[this.localSelectedMessage].images.push(URL.createObjectURL(e.target.files[i]))
+        let url = URL.createObjectURL(e.target.files[i]);
+        this.log("addImageToMessage", url)
+        this.localValue[this.localSelectedMessage].images.push(url)
       }
     },
     removeElement(i) {
@@ -148,7 +157,21 @@ export default {
     },
     addimage(e) {
       for (let i = 0; i < e.target.files.length; i++) {
-        this.tmpFiles.push(URL.createObjectURL(e.target.files[i]))
+        let formData = new FormData();
+        formData.append("file", e.target.files[i]);
+        axios
+          .post("http://127.0.0.1/api/screen_insert", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+          }})
+          .then(function (response) {
+            alert(response.data);
+          })
+          .catch(function (error) {
+            alert(error);
+          });
+        let url = URL.createObjectURL(e.target.files[i]);
+        this.tmpFiles.push(url);
       }
     },
     removeImage(indx, i) {

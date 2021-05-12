@@ -23,6 +23,12 @@
         </div>
       </h1>
     </div>
+    <div class="save-button">
+      <button class="save-button__content" @click="makeScreen">Save</button>
+    </div>
+    <div class="json-button">
+      <button class="json-button__content" @click="makeJson">Json</button>
+    </div>
     <div class="head-row" style="margin: auto; width: 100%">
       <nav class="actions">
         <input type="radio" v-model="selectedOS" id="android" value="android" />
@@ -83,6 +89,7 @@ import ChatInput from "@/components/ChatInput";
 import html2canvas from "html2canvas";
 import IconList from "../../public/ios/icons.json";
 import IconListAndroid from "../../public/android/icons.json";
+import axios from "axios";
 
 export default {
   name: "Container",
@@ -92,6 +99,7 @@ export default {
       chatLeft: [],
       chatRight: [],
       chats: [],
+      screens: [],
       name: "Name",
       lastSeen: "zuletzt online heute 11:21",
       profilePicture: `${require("@/assets/images/no_profile_picture.png")}`,
@@ -100,6 +108,7 @@ export default {
       selectedOS: "android",
       IconList,
       IconListAndroid,
+      serverIp: "http://127.0.0.1"
     };
   },
   watch: {
@@ -111,6 +120,11 @@ export default {
     },
   },
   methods: {
+    log(title, message) {
+      console.groupCollapsed(title);
+      console.log("message", message);
+      console.groupEnd();
+    },
     setTime(time) {
       this.time = time;
     },
@@ -126,8 +140,27 @@ export default {
     setLastSeen(lastSeen) {
       this.lastSeen = lastSeen;
     },
+    dataURItoBlob(dataURI) {
+      // convert base64/URLEncoded data component to raw binary data held in a string
+      var byteString;
+      if (dataURI.split(",")[0].indexOf("base64") >= 0)
+        byteString = atob(dataURI.split(",")[1]);
+      else byteString = unescape(dataURI.split(",")[1]);
+
+      // separate out the mime component
+      var mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
+
+      // write the bytes of the string to a typed array
+      var ia = new Uint8Array(byteString.length);
+      for (var i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+
+      return new Blob([ia], { type: mimeString });
+    },
     makeScreen() {
       let link = document.getElementById("create_screenshot_and_print");
+      let self = this;
 
       html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
         scale: 3,
@@ -135,9 +168,81 @@ export default {
         allowTaint: true,
         backgroundColor: "#000000",
       }).then((canvas) => {
-        link.href = canvas.toDataURL("image/png");
-        link.click();
+        let url = canvas.toDataURL("image/png");
+        link.href = url;
+
+        canvas.toBlob(function (blob) {
+          // Do something with the blob object,
+          // e.g. create multipart form data for file uploads:
+          var formData = new FormData();
+          formData.append("file", blob, "image.jpg");
+          axios
+            .post(self.serverIp + "/api/screen_insert", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            })
+            .then(function (response) {
+              self.log("respone",response.data);
+              self.screens.push({
+                file_id: response.data.file_id,
+                file_path: self.serverIp + response.data.file_path,
+                file_name: response.data.file_name,
+              })
+              // link.click();
+            })
+            .catch(function (error) {
+              alert(error);
+            });
+          
+          // ...
+        }, "image/jpeg");
       });
+    },
+    download(filename, text) {
+      var element = document.createElement('a');
+      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+      element.setAttribute('download', filename);
+
+      element.style.display = 'none';
+      document.body.appendChild(element);
+
+      element.click();
+
+      document.body.removeChild(element);
+
+    },
+    makeJson() {
+      this.log("makeJson", this.screens);
+      if(this.screens.length == 0) {
+        return;
+      }
+      var txtFile = new Date().getTime() + ".json";
+      var str = "{\"images\": {";
+      this.screens.forEach((screen, index) => {
+        this.log("screen", screen);
+        if(index == 0) {
+          str += "\"" + screen.file_id + "\": \"" + screen.file_path + "\"";
+        } else {
+          str += ",\"" + screen.file_id + "\": \"" + screen.file_path + "\"";
+        }
+      });
+      str += "},\"thumbnail\": \"" + this.screens[0].file_id + "\",";
+      str += "\"desc\": \"Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\",";
+      str += "\"questions\": [";
+      this.screens.forEach((screen, index) => {
+        if(index == 0) {
+          str += "{";
+        } else {
+          str += ", {";
+        }
+        str += "\"images\": [" + screen.file_id + ", \"\"],";
+          str += "\"question\": \"Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .\",";
+          str += "\"answers\": [\"Weiter\"]";
+          str += "}";
+      });
+      str += "],\"results\": \"\",  \"lang\": \"ST\",\"is_wpquiz_export\": true}";
+      this.download(txtFile, str);
     },
     generateChat() {
       let tmpChatLeft = this.chatLeft;
@@ -151,6 +256,10 @@ export default {
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
       this.chats = fullchat;
+      this.log(this.chats);
+      // while(this.chatRight.length > 0) {this.chatRight.pop();}
+      // while(this.chatLeft.length > 0) {this.chatLeft.pop();}
+      // while(this.chats.length > 0) {this.chats.pop();}
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -171,6 +280,7 @@ export default {
   display: grid;
   height: 100%;
   grid-template-rows: 1fr 70px 600px 30px;
+  position: relative;
 }
 
 .container .editor-row {
@@ -202,6 +312,62 @@ export default {
   cursor: pointer;
   margin-top: 1em;
   padding: 1em;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  box-shadow: none;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  transition: 0.3s;
+  background: transparent;
+}
+
+.save-button {
+  position: absolute;
+  right: -5rem;
+  top: 7rem;
+}
+
+.save-button:hover {
+  right: -2rem;
+}
+
+.save-button__content:hover {
+  background-color: #c40004;
+}
+
+.save-button__content {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0.8rem 5.5rem 0.8rem 2.5rem;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  box-shadow: none;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  transition: 0.3s;
+  background: transparent;
+}
+
+.json-button {
+  position: absolute;
+  right: -4.8rem;
+  top: 12rem;
+}
+
+.json-button:hover {
+  right: -2rem;
+}
+
+.json-button__content:hover {
+  background-color: #c40004;
+}
+
+.json-button__content {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0.8rem 5.5rem 0.8rem 2.5rem;
   color: white;
   text-decoration: none;
   font-size: 25px;

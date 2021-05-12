@@ -280,7 +280,6 @@ export default {
           return message
         }
       })
-      self.log("replace", replaced);
       if(!replaced.startsWith("<div style"))
       {
         replaced = "<div style='font-size: 18px;float: left; display: inline;'>" + replaced;
