@@ -81,7 +81,7 @@ export default {
       displayicon: false,
       localSelectedMessage: -1,
       page: 0,
-      serverIp: "http://localhost"
+      serverIp: "http://192.168.109.22"
     }
   },
   watch: {

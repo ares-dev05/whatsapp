@@ -27,9 +27,16 @@
       <button class="save-button__content" @click="makeSave">Save</button>
     </div>
     <div class="json-button">
+      <input type="text" v-model="jsonTip" id="jsontip" value="" />
       <button class="json-button__content" @click="makeJson">Json</button>
     </div>
     <div class="load-button">
+      <vSelect
+        :options="loadOptions"
+        class="style-chooser"
+        id="loadoption"
+        @input="setSelected"
+      />
       <button class="load-button__content" @click="makeLoad">Load</button>
     </div>
     <div class="head-row" style="margin: auto; width: 100%">
@@ -82,6 +89,7 @@
         identifier="right"
       />
     </div>
+    <vue-confirm-dialog />
   </div>
 </template>
 
@@ -93,16 +101,40 @@ import html2canvas from "html2canvas";
 import IconList from "../../public/ios/icons.json";
 import IconListAndroid from "../../public/android/icons.json";
 import axios from "axios";
+import vSelect from "vue-select";
+import "vue-select/dist/vue-select.css";
 
 export default {
   name: "Container",
-  components: { ChatInput, AndroidChat, iOSChat },
+  components: { ChatInput, AndroidChat, iOSChat, vSelect },
+  created() {
+    let self = this;
+    axios
+      .post(self.serverIp + "/api/conversation_getAll", {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      .then(function (response) {
+        if (response.data === "database error!") {
+          return;
+        }
+        response.data.forEach((element) => {
+          self.loadOptions.push(element.date);
+        });
+      })
+      .catch(function (error) {
+        self.log("error", error);
+      });
+  },
   data() {
     return {
       chatLeft: [],
       chatRight: [],
       chats: [],
       screens: [],
+      conversations: [],
+      loadOptions: [],
       name: "Name",
       lastSeen: "zuletzt online heute 11:21",
       profilePicture: `${require("@/assets/images/no_profile_picture.png")}`,
@@ -112,6 +144,9 @@ export default {
       IconList,
       IconListAndroid,
       serverIp: "http://192.168.109.22",
+      jsonTip: "",
+      loadmode: "",
+      curLoadMode: "",
     };
   },
   watch: {
@@ -183,6 +218,7 @@ export default {
               },
             })
             .then(function (response) {
+              self.log("response", response);
               self.screens.push({
                 file_id: response.data.file_id,
                 file_path: self.serverIp + response.data.file_path,
@@ -191,9 +227,9 @@ export default {
               link.click();
             })
             .catch(function (error) {
-              alert(error);
+              self.log("error", error);
             });
-        }, "image/png");
+        }, "image/jpeg");
       });
     },
     download(filename, text) {
@@ -210,6 +246,7 @@ export default {
     },
     makeJson() {
       if (this.screens.length == 0) {
+        this.log("jsontip", this.jsonTip);
         return;
       }
       var txtFile = new Date().getTime() + ".json";
@@ -222,8 +259,7 @@ export default {
         }
       });
       str += '},"thumbnail": "' + this.screens[0].file_id + '",';
-      str +=
-        '"desc": "Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",';
+      str += '"desc": "' + this.jsonTip + '",';
       str += '"questions": [';
       this.screens.forEach((screen, index) => {
         if (index == 0) {
@@ -232,61 +268,43 @@ export default {
           str += ", {";
         }
         str += '"images": [' + screen.file_id + ', ""],';
-        str +=
-          '"question": "Das Makeup begeistert ihn nicht so\\r\\n. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",';
+        str += '"question": "' + this.jsonTip + '",';
         str += '"answers": ["Weiter"]';
         str += "}";
       });
       str += '],"results": "",  "lang": "ST","is_wpquiz_export": true}';
       this.download(txtFile, str);
     },
+    generateToday() {
+      var today = new Date();
+      var dd = String(today.getDate()).padStart(2, "0");
+      var mm = String(today.getMonth() + 1).padStart(2, "0"); //January is 0!
+      var yyyy = today.getFullYear();
+      var hh = String(today.getHours()).padStart(2, "0");
+      var min = String(today.getMinutes()).padStart(2, "0");
+      var ss = String(today.getSeconds()).padStart(2, "0");
+
+      today = mm + "/" + dd + "/" + yyyy + " " + hh + ":" + min + ":" + ss;
+      return today;
+    },
     makeSave() {
       let self = this;
-
-      axios
-        .post(self.serverIp + "/api/message_deleteAll", {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
-        .then(function () {
-          self.chats.forEach((chat) => {
-            var formData = new FormData();
-            let images = "";
-            chat.images.forEach((image) => {
-              images += image + ":::";
-            });
-            formData.append("images", images);
-            formData.append("sender", chat.sender === true ? "1" : "0");
-            formData.append("state", chat.state);
-            formData.append("time", chat.time);
-            formData.append("message", chat.message);
-            axios
-              .post(self.serverIp + "/api/message_insert", formData, {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              })
-              .then(function (response) {
-                self.screens.push({
-                  file_id: response.data.file_id,
-                  file_path: self.serverIp + response.data.file_path,
-                  file_name: response.data.file_name,
-                });
-              })
-              .catch(function (error) {
-                alert(error);
-              });
-          });
-        })
-        .catch(function (error) {
-          alert(error);
-        });
+      if (self.chats.length === 0) {
+        alert("Please insert messages. :)");
+        return;
+      }
+      self.handleConfirm();
     },
     makeLoad() {
       let self = this;
+      if (self.loadmode === "") {
+        alert("Please select the conversation date. :)");
+        return;
+      }
+      var formData = new FormData();
+      formData.append("date", self.loadmode);
       axios
-        .post(self.serverIp + "/api/message_getAll", {
+        .post(self.serverIp + "/api/message_getByDate", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
@@ -296,6 +314,9 @@ export default {
             let images = message.images.split(":::");
             images.pop();
             if (message.sender === "1") {
+              while (self.chatRight.length > 0) {
+                self.chatRight.pop();
+              }
               self.chatRight.push({
                 message: message.message,
                 time: message.time,
@@ -304,6 +325,9 @@ export default {
                 sender: true,
               });
             } else {
+              while (self.chatLeft.length > 0) {
+                self.chatLeft.pop();
+              }
               self.chatLeft.push({
                 message: message.message,
                 time: message.time,
@@ -316,9 +340,10 @@ export default {
           self.chatLeft.sort(self.compareTwoTimes);
           self.chatRight.sort(self.compareTwoTimes);
           self.generateChat();
+          self.curLoadMode = self.loadmode;
         })
         .catch(function (error) {
-          alert(error);
+          self.log("error", error);
         });
     },
     generateChat() {
@@ -345,9 +370,175 @@ export default {
       }
       return 0;
     },
+    setSelected(value) {
+      this.loadmode = value;
+    },
+    handleConfirm() {
+      let self = this;
+      this.$confirm({
+        message: `Would you like to save it as a new conversation?`,
+        button: {
+          no: "No",
+          yes: "Yes",
+        },
+        /**
+         * Callback Function
+         * @param {Boolean} confirm
+         */
+        callback: (confirm) => {
+          var formData = new FormData();
+          if (confirm) {
+            // ... do something
+            let curTime = this.generateToday();
+
+            formData.append("time", curTime);
+            axios
+              .post(self.serverIp + "/api/conversation_insert", formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              })
+              .then(function (response) {
+                self.log("id", response);
+                self.chats.forEach((chat) => {
+                  var formData = new FormData();
+                  let images = "";
+                  chat.images.forEach((image) => {
+                    images += image + ":::";
+                  });
+                  formData.append("images", images);
+                  formData.append("sender", chat.sender === true ? "1" : "0");
+                  formData.append("state", chat.state);
+                  formData.append("time", chat.time);
+                  formData.append("message", chat.message);
+                  formData.append("con_id", response.data);
+                  axios
+                    .post(self.serverIp + "/api/message_insert", formData, {
+                      headers: {
+                        "Content-Type": "multipart/form-data",
+                      },
+                    })
+                    .then(function (response) {
+                      self.screens.push({
+                        file_id: response.data.file_id,
+                        file_path: self.serverIp + response.data.file_path,
+                        file_name: response.data.file_name,
+                      });
+                    })
+                    .catch(function (error) {
+                      self.log("error", error);
+                    });
+                });
+                self.loadOptions.push(curTime);
+                alert("Successfully saved.");
+              })
+              .catch(function (error) {
+                self.log("error", error);
+              });
+          } else {
+            self.log("other");
+            if (self.curLoadMode === "") {
+              alert("Please load the conversation! :(");
+              return;
+            }
+            formData.append("time", self.curLoadMode);
+            axios
+              .post(self.serverIp + "/api/conversation_getByTime", formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              })
+              .then(function (response) {
+                self.log("id", response);
+                self.chats.forEach((chat) => {
+                  var formData = new FormData();
+                  let images = "";
+                  chat.images.forEach((image) => {
+                    images += image + ":::";
+                  });
+                  formData.append("images", images);
+                  formData.append("sender", chat.sender === true ? "1" : "0");
+                  formData.append("state", chat.state);
+                  formData.append("time", chat.time);
+                  formData.append("message", chat.message);
+                  formData.append("con_id", response.data);
+                  axios
+                    .post(self.serverIp + "/api/message_insert", formData, {
+                      headers: {
+                        "Content-Type": "multipart/form-data",
+                      },
+                    })
+                    .then(function (response) {
+                      self.screens.push({
+                        file_id: response.data.file_id,
+                        file_path: self.serverIp + response.data.file_path,
+                        file_name: response.data.file_name,
+                      });
+                    })
+                    .catch(function (error) {
+                      self.log("error", error);
+                    });
+                });
+                alert("Successfully updated.");
+              })
+              .catch(function (error) {
+                self.log("error", error);
+              });
+          }
+        },
+      });
+    },
   },
 };
 </script>
+<style>
+.style-chooser .vs__dropdown-menu {
+  background: white;
+  border: none;
+  color: white;
+  text-transform: lowercase;
+  font-variant: small-caps;
+}
+.style-chooser .vs__search::placeholder,
+.style-chooser .vs__dropdown-toggle {
+  background: transparent;
+  border: none;
+  color: white;
+  text-transform: lowercase;
+  font-variant: small-caps;
+  height: 3.3rem;
+}
+
+.vs__search {
+  display: none;
+}
+
+.style-chooser .vs__clear,
+.style-chooser .vs__open-indicator {
+  fill: white;
+  color: red;
+}
+
+.vs__dropdown-toggle {
+  border: 1px solid white !important;
+  padding-top: 0.8rem !important;
+  padding-bottom: 0.7rem !important;
+}
+
+.vs__selected {
+  color: white;
+}
+
+.vs__selected-options {
+  display: flex;
+  flex-basis: 100%;
+  flex-grow: 1;
+  /* flex-wrap: wrap; */
+  padding: 0 2px;
+  position: relative;
+  overflow: hidden;
+}
+</style>
 <style scoped>
 .container {
   display: grid;
@@ -429,10 +620,6 @@ export default {
   top: 12rem;
 }
 
-.json-button:hover {
-  right: -2rem;
-}
-
 .json-button__content:hover {
   background-color: #c40004;
 }
@@ -451,14 +638,24 @@ export default {
   background: transparent;
 }
 
+#jsontip {
+  transition: 0.7s;
+  width: 14rem;
+  padding: 0.9rem;
+  position: relative;
+  bottom: 0.05em;
+  border-radius: 4px;
+  margin-right: 1rem;
+  background: transparent;
+  border-color: white;
+  color: white;
+  font-size: 20px;
+}
+
 .load-button {
   position: absolute;
   right: -5rem;
   top: 17rem;
-}
-
-.load-button:hover {
-  right: -2rem;
 }
 
 .load-button__content:hover {
@@ -506,5 +703,13 @@ input[type="radio"]:checked + label {
   background: #ffffff;
   width: 100%;
   margin: auto;
+}
+
+#loadoption {
+  float: left;
+  width: 14rem;
+  position: relative;
+  top: 2.5px;
+  right: 1rem;
 }
 </style>
