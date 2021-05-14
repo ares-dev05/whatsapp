@@ -199,9 +199,7 @@ export default {
 
       html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
         scale: 3,
-        allowTaint: true,
         useCORS: true,
-        logging: true,
         letterRendering: true,
         backgroundColor: "#000000",
       }).then((canvas) => {
@@ -310,13 +308,16 @@ export default {
           },
         })
         .then(function (response) {
+          while (self.chatRight.length > 0) {
+            self.chatRight.pop();
+          }
+          while (self.chatLeft.length > 0) {
+            self.chatLeft.pop();
+          }
           response.data.forEach((message) => {
             let images = message.images.split(":::");
             images.pop();
             if (message.sender === "1") {
-              while (self.chatRight.length > 0) {
-                self.chatRight.pop();
-              }
               self.chatRight.push({
                 message: message.message,
                 time: message.time,
@@ -325,9 +326,6 @@ export default {
                 sender: true,
               });
             } else {
-              while (self.chatLeft.length > 0) {
-                self.chatLeft.pop();
-              }
               self.chatLeft.push({
                 message: message.message,
                 time: message.time,
@@ -390,6 +388,7 @@ export default {
           if (confirm) {
             // ... do something
             let curTime = this.generateToday();
+            self.log("selfchat", self.chats);
 
             formData.append("time", curTime);
             axios
