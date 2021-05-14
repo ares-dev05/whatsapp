@@ -39,6 +39,21 @@
       />
       <button class="load-button__content" @click="makeLoad">Load</button>
     </div>
+    <div class="screen-setting-panel">
+      <div class="panel">
+        <span>Width: </span>
+        <input type="number" v-model="screenWidth" id="screen-width" value="" />
+      </div>
+      <div class="panel">
+        <span>Height: </span>
+        <input
+          type="number"
+          v-model="screenHeight"
+          id="screen-height"
+          value=""
+        />
+      </div>
+    </div>
     <div class="head-row" style="margin: auto; width: 100%">
       <nav class="actions">
         <input type="radio" v-model="selectedOS" id="android" value="android" />
@@ -103,6 +118,7 @@ import IconListAndroid from "../../public/android/icons.json";
 import axios from "axios";
 import vSelect from "vue-select";
 import "vue-select/dist/vue-select.css";
+import Hermite_class from "hermite-resize";
 
 export default {
   name: "Container",
@@ -147,6 +163,8 @@ export default {
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
+      screenWidth: 1263,
+      screenHeight: 1803,
     };
   },
   watch: {
@@ -199,11 +217,15 @@ export default {
 
       html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
         scale: 3,
+        allowTaint: true,
         useCORS: true,
         letterRendering: true,
         backgroundColor: "#000000",
       }).then((canvas) => {
+        var HERMITE = new Hermite_class();
+        HERMITE.resample_single(canvas, self.screenWidth, self.screenHeight, true);
         let url = canvas.toDataURL("image/png");
+        self.log("url", url);
         link.href = url;
 
         canvas.toBlob(function (blob) {
@@ -710,5 +732,40 @@ input[type="radio"]:checked + label {
   position: relative;
   top: 2.5px;
   right: 1rem;
+}
+
+.screen-setting-panel {
+  position: absolute;
+  left: 23px;
+  top: 7.6rem;
+}
+
+.panel {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.panel span {
+  color: white;
+  font-size: 22px;
+}
+
+#screen-width {
+  line-height: 26px;
+  font-size: 18px;
+  background: transparent;
+  border: 1px solid white;
+  height: 37px;
+  color: white;
+  margin-left: 7px;
+}
+
+#screen-height {
+  line-height: 26px;
+  font-size: 18px;
+  background: transparent;
+  border: 1px solid white;
+  height: 37px;
+  color: white;
 }
 </style>
