@@ -22,7 +22,7 @@
       </span>
       <span class="align-right" v-else-if="icons.signal==='off'"></span>
     </div>
-    <div class="whatsapp-chat" v-bind:style="{ backgroundImage: 'url(' + backgroundImage + ')' }">
+    <div class="whatsapp-chat" v-bind:style="{ backgroundImage: 'url(' + backgroundImage + ')', height: chatsHeight + 'px'}">
       <div class="whatsapp-chat-header" @contextmenu="contextmenuValue='name-context'">
         <div class="whatsapp-chat-header__back">
           <i class="material-icons" style="font-size: 2.5em">keyboard_arrow_left</i>
@@ -207,7 +207,8 @@ export default {
     lastSeen: String,
     profilePicture: String,
     backgroundImage: String,
-    emojis: Array
+    emojis: Array,
+    chatsHeight: String
   },
   data() {
     return {
@@ -557,6 +558,8 @@ input, button, textarea {
   overflow-x: hidden;
   padding-right: 17px;
   box-sizing: content-box;
+  padding-left: 0px;
+  padding-bottom: 0px;
 }
 
 .whatsapp-chat-messages .chats {

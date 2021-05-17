@@ -36,7 +36,12 @@
         class="style-chooser"
         id="loadoption"
         @input="setSelected"
-      />
+      >
+        <template slot="option" slot-scope="option">
+          {{ option.label }}
+          <span class="del" @click="deleteList">X</span>
+        </template>
+      </vSelect>
       <button class="load-button__content" @click="makeLoad">Load</button>
     </div>
     <div class="screen-setting-panel">
@@ -62,7 +67,12 @@
         <label for="ios">iOS</label>
       </nav>
     </div>
-    <div class="editor-row">
+    <div
+      class="editor-row"
+      v-bind:style="{
+        gridTemplateColumns: '1fr calc(' + screenWidth + 'px) 1fr',
+      }"
+    >
       <ChatInput
         :selectedOs="selectedOS"
         :emojis="IconList"
@@ -82,6 +92,10 @@
         v-show="selectedOS === 'android'"
         id="chat_to_print_android"
         :chats="chats"
+        :chatsHeight="screenHeight"
+        v-bind:style="{
+          height: Number(screenHeight) + 26 + 'px',
+        }"
       />
       <iOSChat
         :emojis="IconList"
@@ -93,6 +107,10 @@
         v-show="selectedOS === 'ios'"
         id="chat_to_print_ios"
         :chats="chats"
+        :chatsHeight="screenHeight"
+        v-bind:style="{
+          height: Number(screenHeight) + 26 + 5 + 'px',
+        }"
       />
       <ChatInput
         :selectedOs="selectedOS"
@@ -118,7 +136,6 @@ import IconListAndroid from "../../public/android/icons.json";
 import axios from "axios";
 import vSelect from "vue-select";
 import "vue-select/dist/vue-select.css";
-import Hermite_class from "hermite-resize";
 
 export default {
   name: "Container",
@@ -163,8 +180,8 @@ export default {
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
-      screenWidth: 1263,
-      screenHeight: 1803,
+      screenWidth: "421",
+      screenHeight: "572",
     };
   },
   watch: {
@@ -220,11 +237,11 @@ export default {
         allowTaint: true,
         useCORS: true,
         letterRendering: true,
-        backgroundColor: "#000000",
+        dpi: 300,
+        backgroundColor: "#fff",
       }).then((canvas) => {
-        var HERMITE = new Hermite_class();
-        HERMITE.resample_single(canvas, self.screenWidth, self.screenHeight, true);
-        let url = canvas.toDataURL("image/png");
+        self.log("canvas", canvas);
+        let url = canvas.toDataURL("image/jpeg");
         self.log("url", url);
         link.href = url;
 
@@ -251,6 +268,9 @@ export default {
             });
         }, "image/jpeg");
       });
+    },
+    deleteList() {
+      self.log("loadmode", self.loadmode);
     },
     download(filename, text) {
       var element = document.createElement("a");
@@ -391,6 +411,7 @@ export default {
       return 0;
     },
     setSelected(value) {
+      this.log("event", value);
       this.loadmode = value;
     },
     handleConfirm() {
@@ -559,6 +580,25 @@ export default {
   position: relative;
   overflow: hidden;
 }
+
+.vs__dropdown-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.del {
+  color: #c08080;
+  font-family: cursive !important;
+  cursor: pointer;
+  position: relative;
+  bottom: 1px;
+}
+
+.del:hover {
+  color: #ae1818;
+  font-weight: 700;
+}
 </style>
 <style scoped>
 .container {
@@ -566,6 +606,8 @@ export default {
   height: 100%;
   grid-template-rows: 1fr 70px 600px 30px;
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .container .editor-row {

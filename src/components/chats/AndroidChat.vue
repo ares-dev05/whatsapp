@@ -20,7 +20,7 @@
       <span class="align-right" v-else-if="icons.rotate==='locked'"><i
           class="material-icons">screen_lock_rotation</i></span>
     </div>
-    <div class="whatsapp-chat" v-bind:style="{ backgroundImage: 'url(' + backgroundImage + ')' }">
+    <div class="whatsapp-chat" v-bind:style="{ background: 'url(' + backgroundImage + ') no-repeat center center/cover', height: chatsHeight + 'px'}">
       <div class="whatsapp-chat-header" @contextmenu="contextmenuValue='name-context'">
         <div class="whatsapp-chat-header__back">
           <i class="material-icons">&#xe5c4;</i>
@@ -242,7 +242,8 @@ export default {
     lastSeen: String,
     profilePicture: String,
     backgroundImage: String,
-    emojis: Array
+    emojis: Array,
+    chatsHeight: String
   },
   data() {
     return {
@@ -427,7 +428,7 @@ export default {
 <style scoped>
 .android-headbar {
   background: var(--android-dark-green);
-  height: 7.3mm;
+  height: 26px;
   color: #FFFFFF;
 }
 
@@ -457,8 +458,7 @@ input, button, textarea {
 
 .whatsapp-chat {
   width: 100%;
-  height: 151.7mm;
-  background: center center/cover no-repeat;
+  background-size: cover;
   margin: 0 auto;
   position: relative;
   display: flex;
@@ -531,8 +531,10 @@ input, button, textarea {
   position: relative;
   overflow-y: scroll;
   overflow-x: hidden;
-  padding-right: 17px;
+  padding-right: 18px;
   box-sizing: content-box;
+  padding-left: 0px;
+  padding-bottom: 0px;
 }
 
 .whatsapp-chat-messages .chats {
