@@ -33,7 +33,7 @@
     <div class="load-button">
       <vSelect
         :options="loadOptions"
-        class="style-chooser"
+        class="chooser"
         id="loadoption"
         @input="setSelected"
       >
@@ -171,12 +171,13 @@ export default {
       name: "Name",
       lastSeen: "zuletzt online heute 11:21",
       profilePicture: `${require("@/assets/images/no_profile_picture.png")}`,
+      profilePath: "",
       background: `${require("@/assets/images/default_wallpaper_android.png")}`,
       time: "11:50",
       selectedOS: "android",
       IconList,
       IconListAndroid,
-      serverIp: "http://192.168.109.22",
+      serverIp: "http://192.168.109.22/whatsapp_backend",
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
@@ -205,7 +206,9 @@ export default {
       this.background = background;
     },
     setProfilePicture(profilePicture) {
+      this.log("setProfilePicture", profilePicture);
       this.profilePicture = profilePicture;
+      this.profilePath = profilePicture;
     },
     setName(name) {
       this.name = name;
@@ -229,6 +232,27 @@ export default {
       return new Blob([ia], { type: mimeString });
     },
     makeScreen() {
+      this.previewScreen();
+      this.previewScreen();
+      this.previewScreen();
+      this.previewScreen();
+      this.generateScreen();
+    },
+    previewScreen() {
+      let link = document.getElementById("create_screenshot_and_print");
+
+      html2canvas(document.querySelector("#chat_to_print_" + this.selectedOS), {
+        scale: 3,
+        allowTaint: true,
+        useCORS: true,
+        letterRendering: true,
+        backgroundColor: "#000",
+      }).then((canvas) => {
+        let url = canvas.toDataURL("image/jpeg");
+        link.href = url;
+      });
+    },
+    generateScreen() {
       let link = document.getElementById("create_screenshot_and_print");
       let self = this;
 
@@ -237,12 +261,9 @@ export default {
         allowTaint: true,
         useCORS: true,
         letterRendering: true,
-        dpi: 300,
-        backgroundColor: "#fff",
+        backgroundColor: "#000",
       }).then((canvas) => {
-        self.log("canvas", canvas);
         let url = canvas.toDataURL("image/jpeg");
-        self.log("url", url);
         link.href = url;
 
         canvas.toBlob(function (blob) {
@@ -385,6 +406,27 @@ export default {
         .catch(function (error) {
           self.log("error", error);
         });
+        
+      axios
+        .post(self.serverIp + "/api/conversation_getDataByTime", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        })
+        .then(function (response) {
+          self.log("response", response);
+          
+          self.profilePath = response.data.avatar;
+          if(self.profilePath !== "") {
+            self.profilePicture = response.data.avatar;
+          }
+          self.background = response.data.background;
+          self.name = response.data.name;
+          self.lastSeen = response.data.lastseen;
+        })
+        .catch(function (error) {
+          self.log("error", error);
+        });
     },
     generateChat() {
       let tmpChatLeft = this.chatLeft;
@@ -395,9 +437,13 @@ export default {
       for (let j = 0; j < tmpChatRight.length; j++) {
         tmpChatRight[j].sender = true;
       }
+      
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
       this.chats = fullchat;
+      this.log("tmpChatLeft", tmpChatLeft);
+      this.log("tmpChatRight", tmpChatRight);
+      this.log("fullchat", fullchat);
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -431,9 +477,13 @@ export default {
           if (confirm) {
             // ... do something
             let curTime = this.generateToday();
-            self.log("selfchat", self.chats);
 
             formData.append("time", curTime);
+            formData.append("avatar", self.profilePath);
+            formData.append("background", self.background);
+            formData.append("name", self.name);
+            formData.append("lastseen", self.lastSeen);
+
             axios
               .post(self.serverIp + "/api/conversation_insert", formData, {
                 headers: {
@@ -484,6 +534,10 @@ export default {
               return;
             }
             formData.append("time", self.curLoadMode);
+            formData.append("avatar", self.profilePath);
+            formData.append("background", self.background);
+            formData.append("name", self.name);
+            formData.append("lastseen", self.lastSeen);
             axios
               .post(self.serverIp + "/api/conversation_getByTime", formData, {
                 headers: {
@@ -534,15 +588,15 @@ export default {
 };
 </script>
 <style>
-.style-chooser .vs__dropdown-menu {
+.chooser .vs__dropdown-menu {
   background: white;
   border: none;
   color: white;
   text-transform: lowercase;
   font-variant: small-caps;
 }
-.style-chooser .vs__search::placeholder,
-.style-chooser .vs__dropdown-toggle {
+.chooser .vs__search::placeholder,
+.chooser .vs__dropdown-toggle {
   background: transparent;
   border: none;
   color: white;
@@ -555,8 +609,8 @@ export default {
   display: none;
 }
 
-.style-chooser .vs__clear,
-.style-chooser .vs__open-indicator {
+.chooser .vs__clear,
+.chooser .vs__open-indicator {
   fill: white;
   color: red;
 }

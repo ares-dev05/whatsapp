@@ -81,7 +81,7 @@ export default {
       displayicon: false,
       localSelectedMessage: -1,
       page: 0,
-      serverIp: "http://192.168.109.22"
+      serverIp: "http://192.168.109.22/whatsapp_backend"
     }
   },
   watch: {
@@ -174,12 +174,18 @@ export default {
       for (let i = 0; i < e.target.files.length; i++) {
         let formData = new FormData();
         formData.append("file", e.target.files[i]);
+        self.log("file", e.target.files[i]);
         axios
           .post(self.serverIp + "/api/image_insert", formData, {
             headers: {
               "Content-Type": "multipart/form-data"
           }})
           .then(function (response) {
+            self.log("response", response);
+            if(response.data.file_path === null) {
+              alert("ERROR!!! :(");
+              return;
+            }
             let url =  self.serverIp + response.data.file_path;
             self.tmpFiles.push(url);
           })

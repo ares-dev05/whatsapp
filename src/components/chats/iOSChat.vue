@@ -196,6 +196,7 @@
 
 <script>
 import ContextMenu from "@/components/ContextMenu";
+import axios from "axios";
 
 export default {
   name: "iOSChat",
@@ -231,7 +232,8 @@ export default {
         name: '',
         lastSeen: '',
         time: ''
-      }
+      },
+      serverIp: "http://192.168.109.22/whatsapp_backend"
     }
   },
   watch: {
@@ -357,12 +359,42 @@ export default {
       this.contextmenuValue = ''
     },
     onFileChange(e) {
+      let self = this;
       const file = e.target.files[0];
-      this.$parent.setProfilePicture(URL.createObjectURL(file))
+      let formData = new FormData();
+      formData.append("file", file);
+      axios
+        .post(self.serverIp + "/api/image_insert", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data"
+        }})
+        .then(function (response) {
+          self.log("response", response);
+          let url =  self.serverIp + response.data.file_path;
+          self.$parent.setProfilePicture(url)
+        })
+        .catch(function (error) {
+          self.log("error", error);
+        });
     },
     onFileChangeBackground(e) {
+      let self = this;
       const file = e.target.files[0];
-      this.$parent.setBackground(URL.createObjectURL(file))
+      let formData = new FormData();
+      formData.append("file", file);
+      axios
+        .post(self.serverIp + "/api/image_insert", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data"
+        }})
+        .then(function (response) {
+          self.log("response", response);
+          let url =  self.serverIp + response.data.file_path;
+          self.$parent.setBackground(url)
+        })
+        .catch(function (error) {
+          self.log("error", error);
+        });
     }
   }
 }
