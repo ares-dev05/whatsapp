@@ -39,9 +39,17 @@
       >
         <template slot="option" slot-scope="option">
           {{ option.label }}
-          <span class="del" @click="deleteList">X</span>
         </template>
       </vSelect>
+      <span
+        class="del"
+        @click="deleteList"
+        v-bind:style="{
+          display: delCss,
+        }"
+      >
+        X
+      </span>
       <button class="load-button__content" @click="makeLoad">Load</button>
     </div>
     <div class="screen-setting-panel">
@@ -183,6 +191,7 @@ export default {
       curLoadMode: "",
       screenWidth: "421",
       screenHeight: "572",
+      delCss: "none",
     };
   },
   watch: {
@@ -291,7 +300,9 @@ export default {
       });
     },
     deleteList() {
+      let self = this;
       self.log("loadmode", self.loadmode);
+      self.handleDeleteList();
     },
     download(filename, text) {
       var element = document.createElement("a");
@@ -406,7 +417,7 @@ export default {
         .catch(function (error) {
           self.log("error", error);
         });
-        
+
       axios
         .post(self.serverIp + "/api/conversation_getDataByTime", formData, {
           headers: {
@@ -415,9 +426,9 @@ export default {
         })
         .then(function (response) {
           self.log("response", response);
-          
+
           self.profilePath = response.data.avatar;
-          if(self.profilePath !== "") {
+          if (self.profilePath !== "") {
             self.profilePicture = response.data.avatar;
           }
           self.background = response.data.background;
@@ -437,7 +448,7 @@ export default {
       for (let j = 0; j < tmpChatRight.length; j++) {
         tmpChatRight[j].sender = true;
       }
-      
+
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
       this.chats = fullchat;
@@ -459,6 +470,7 @@ export default {
     setSelected(value) {
       this.log("event", value);
       this.loadmode = value;
+      this.delCss = "";
     },
     handleConfirm() {
       let self = this;
@@ -584,10 +596,52 @@ export default {
         },
       });
     },
+    handleDeleteList() {
+      let self = this;
+      this.$confirm({
+        message: `Would you like to delete it?`,
+        button: {
+          no: "No",
+          yes: "Yes",
+        },
+        /**
+         * Callback Function
+         * @param {Boolean} confirm
+         */
+        callback: (confirm) => {
+          var formData = new FormData();
+          if (confirm) {
+            // ... do something
+            formData.append("time", self.loadmode);
+
+            axios
+              .post(self.serverIp + "/api/conversation_delByTime", formData, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              })
+              .then(function (response) {
+                if(response.data === "success") {
+                  alert("Successfully deleted.");
+                  self.curLoadMode = "";
+                  self.loadmode = "";
+                  window.location.href = "http://192.168.109.22:8080";
+                }
+              })
+              .catch(function (error) {
+                self.log("error", error);
+              });
+          }
+        },
+      });
+    },
   },
 };
 </script>
 <style>
+.vs__clear {
+  display: none;
+}
 .chooser .vs__dropdown-menu {
   background: white;
   border: none;
@@ -642,16 +696,16 @@ export default {
 }
 
 .del {
-  color: #c08080;
+  color: white;
   font-family: cursive !important;
   cursor: pointer;
-  position: relative;
-  bottom: 1px;
+  position: absolute;
+  left: 10.5rem;
+  top: 1.19rem;
 }
 
 .del:hover {
   color: #ae1818;
-  font-weight: 700;
 }
 </style>
 <style scoped>
