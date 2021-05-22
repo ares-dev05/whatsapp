@@ -1,5 +1,10 @@
 <template>
   <div class="container">
+    <vue-element-loading
+      :active="loadingBar"
+      spinner="bar-fade-scale"
+      color="#FF6700"
+    />
     <div class="head-row" style="margin: auto">
       <h1
         style="
@@ -185,13 +190,15 @@ export default {
       selectedOS: "android",
       IconList,
       IconListAndroid,
-      serverIp: "http://192.168.109.22/whatsapp_backend",
+      serverIp: "http://195.90.213.91/whatsapp_backend",
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
       screenWidth: "421",
       screenHeight: "572",
       delCss: "none",
+      postIndex: 0,
+      loadingBar: false
     };
   },
   watch: {
@@ -285,7 +292,6 @@ export default {
               },
             })
             .then(function (response) {
-              self.log("response", response);
               self.screens.push({
                 file_id: response.data.file_id,
                 file_path: self.serverIp + response.data.file_path,
@@ -301,7 +307,6 @@ export default {
     },
     deleteList() {
       let self = this;
-      self.log("loadmode", self.loadmode);
       self.handleDeleteList();
     },
     download(filename, text) {
@@ -362,7 +367,7 @@ export default {
     makeSave() {
       let self = this;
       if (self.chats.length === 0) {
-        alert("Please insert messages. :)");
+        self.showAlert("Please insert messages.");
         return;
       }
       self.handleConfirm();
@@ -370,7 +375,7 @@ export default {
     makeLoad() {
       let self = this;
       if (self.loadmode === "") {
-        alert("Please select the conversation date. :)");
+        self.showAlert("Please select the conversation date.");
         return;
       }
       var formData = new FormData();
@@ -425,13 +430,16 @@ export default {
           },
         })
         .then(function (response) {
-          self.log("response", response);
-
           self.profilePath = response.data.avatar;
           if (self.profilePath !== "") {
             self.profilePicture = response.data.avatar;
+          } else {
+            self.profilePicture = `${require("@/assets/images/no_profile_picture.png")}`;
           }
           self.background = response.data.background;
+          if (self.background === "") {
+            self.background = `${require("@/assets/images/default_wallpaper_android.png")}`;
+          }
           self.name = response.data.name;
           self.lastSeen = response.data.lastseen;
         })
@@ -452,9 +460,6 @@ export default {
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
       this.chats = fullchat;
-      this.log("tmpChatLeft", tmpChatLeft);
-      this.log("tmpChatRight", tmpChatRight);
-      this.log("fullchat", fullchat);
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -468,9 +473,39 @@ export default {
       return 0;
     },
     setSelected(value) {
-      this.log("event", value);
       this.loadmode = value;
       this.delCss = "";
+    },
+    showAlert(msg) {
+      this.$notify({
+        message: msg,
+        type: "",
+        top: true,
+        bottom: false,
+        left: true,
+        right: false,
+        showClose: true,
+        closeDelay: 4500
+      });
+    },
+    async post(formData, curTime) {
+      let self = this;
+      await axios.post(self.serverIp + "/api/message_insert", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      self.postIndex -= 1;
+      if (self.postIndex === 0) {
+        self.loadingBar = false;
+        if (curTime !== null) {
+          self.loadOptions.push(curTime);
+          self.showAlert("saved successfully!")
+        } else {
+          self.showAlert("updated successfully!")
+        }
+      }
     },
     handleConfirm() {
       let self = this;
@@ -485,6 +520,7 @@ export default {
          * @param {Boolean} confirm
          */
         callback: (confirm) => {
+          self.loadingBar = true;
           var formData = new FormData();
           if (confirm) {
             // ... do something
@@ -503,7 +539,7 @@ export default {
                 },
               })
               .then(function (response) {
-                self.log("id", response);
+                self.postIndex = self.chats.length;
                 self.chats.forEach((chat) => {
                   var formData = new FormData();
                   let images = "";
@@ -516,33 +552,16 @@ export default {
                   formData.append("time", chat.time);
                   formData.append("message", chat.message);
                   formData.append("con_id", response.data);
-                  axios
-                    .post(self.serverIp + "/api/message_insert", formData, {
-                      headers: {
-                        "Content-Type": "multipart/form-data",
-                      },
-                    })
-                    .then(function (response) {
-                      self.screens.push({
-                        file_id: response.data.file_id,
-                        file_path: self.serverIp + response.data.file_path,
-                        file_name: response.data.file_name,
-                      });
-                    })
-                    .catch(function (error) {
-                      self.log("error", error);
-                    });
+                  self.post(formData, curTime);
                 });
-                self.loadOptions.push(curTime);
-                alert("Successfully saved.");
               })
               .catch(function (error) {
                 self.log("error", error);
+                self.showAlert("Save failed :(");
               });
           } else {
-            self.log("other");
             if (self.curLoadMode === "") {
-              alert("Please load the conversation! :(");
+              self.showAlert("Please load the conversation! :(")
               return;
             }
             formData.append("time", self.curLoadMode);
@@ -557,7 +576,7 @@ export default {
                 },
               })
               .then(function (response) {
-                self.log("id", response);
+                self.postIndex = self.chats.length;
                 self.chats.forEach((chat) => {
                   var formData = new FormData();
                   let images = "";
@@ -570,27 +589,12 @@ export default {
                   formData.append("time", chat.time);
                   formData.append("message", chat.message);
                   formData.append("con_id", response.data);
-                  axios
-                    .post(self.serverIp + "/api/message_insert", formData, {
-                      headers: {
-                        "Content-Type": "multipart/form-data",
-                      },
-                    })
-                    .then(function (response) {
-                      self.screens.push({
-                        file_id: response.data.file_id,
-                        file_path: self.serverIp + response.data.file_path,
-                        file_name: response.data.file_name,
-                      });
-                    })
-                    .catch(function (error) {
-                      self.log("error", error);
-                    });
+                  self.post(formData, null);
                 });
-                alert("Successfully updated.");
               })
               .catch(function (error) {
                 self.log("error", error);
+                self.showAlert("Save failed :(");
               });
           }
         },
@@ -621,11 +625,20 @@ export default {
                 },
               })
               .then(function (response) {
-                if(response.data === "success") {
-                  alert("Successfully deleted.");
+                if (response.data === "success") {
+                  self.showAlert("Successfully deleted.");
                   self.curLoadMode = "";
                   self.loadmode = "";
-                  window.location.href = "http://192.168.109.22:8080";
+                  while (self.chatRight.length > 0) {
+                    self.chatRight.pop();
+                  }
+                  while (self.chatLeft.length > 0) {
+                    self.chatLeft.pop();
+                  }
+                  while (self.chats.length > 0) {
+                    self.chats.pop();
+                  }
+                  window.location.href = "http://195.90.213.91";
                 }
               })
               .catch(function (error) {

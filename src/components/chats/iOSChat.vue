@@ -233,7 +233,7 @@ export default {
         lastSeen: '',
         time: ''
       },
-      serverIp: "http://192.168.109.22/whatsapp_backend"
+      serverIp: "http://195.90.213.91/whatsapp_backend"
     }
   },
   watch: {
@@ -285,7 +285,7 @@ export default {
       })
       if(!replaced.startsWith("<div style"))
       {
-        replaced = "<div style='font-size: 18px;float: left; display: inline;'>" + replaced;
+        replaced = "<div style='font-family: Helvetica;font-size: 18px;float: left; display: inline;overflow-wrap: anywhere;'>" + replaced;
       }
       return replaced
     },
@@ -369,7 +369,6 @@ export default {
             "Content-Type": "multipart/form-data"
         }})
         .then(function (response) {
-          self.log("response", response);
           let url =  self.serverIp + response.data.file_path;
           self.$parent.setProfilePicture(url)
         })
@@ -388,7 +387,6 @@ export default {
             "Content-Type": "multipart/form-data"
         }})
         .then(function (response) {
-          self.log("response", response);
           let url =  self.serverIp + response.data.file_path;
           self.$parent.setBackground(url)
         })
