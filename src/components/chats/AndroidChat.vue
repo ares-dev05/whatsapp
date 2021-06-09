@@ -52,7 +52,7 @@
           </div>
 
           <div v-for="(chat, indx) in chats" :key="'chatmessage_'+indx"
-               :class="['whatsapp-chat-message',(chat.sender)?'whatsapp-chat-messages__sender':'whatsapp-chat-messages__receiver']">
+               :class="['whatsapp-chat-message',(chat.sender)?'whatsapp-chat-messages__sender':'whatsapp-chat-messages__receiver', (chat.check)?'high-top':'normal-top']">
             <div class="whatsapp-image" v-if="chat.images.length === 1">
               <div class="overlay" v-if="chat.message.length <=0"></div>
               <img style="width: 100%;" :src="chat.images[0]" />
@@ -72,7 +72,7 @@
             </div>
             <span v-html="replaceEmojis(chat.message) + generateMessageTime(chat)">
             </span>
-            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'no-text':'']">
+            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'':'']">
               {{ chat.time.slice(0,5) }}
               <span v-if="chat.sender">
                 <i class="material-icons checkmark" v-if="chat.state==='read'">&#xe877;</i>
@@ -267,7 +267,7 @@ export default {
         lastSeen: '',
         time: ''
       },
-      serverIp: "http://195.90.213.91/whatsapp_backend"
+      serverIp: "http://192.168.109.22/whatsapp_backend"
     }
   },
   watch: {
@@ -341,13 +341,17 @@ export default {
     },
     replaceEmojis(message) {
       let self = this
+      self.log("message", message);
       let replaced = message.replace(/:(\d*?):/g, function(a, b){
-        if(self.emojis[b]!==undefined) {
+        if(b == 99999) {
+          return '<br />'
+        } else if(self.emojis[b]!==undefined) {
           return '<img style="display: inline; height: 22px; margin: 0 2px;position: relative; vertical-align: middle;" src="android/' + self.emojis[b] + '" />';
         } else {
           return message
         }
       })
+      
       if(!replaced.startsWith("<div style"))
       {
         replaced = "<div style='font-size: 18px;float: left; display: inline;overflow-wrap: anywhere;'>" + replaced;
@@ -602,10 +606,24 @@ input, button, textarea {
   padding: 7px;
   display: flex;
   flex-wrap: wrap;
-  margin-top: 8px;
   border-radius: 5px;
-  
   position: relative;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__receiver.high-top {
+  margin-top: 8px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__receiver.normal-top {
+  margin-top: 2px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__sender.high-top {
+  margin-top: 8px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__sender.normal-top {
+  margin-top: 2px;
 }
 
 .whatsapp-chat-messages__sender:before, .whatsapp-chat-messages__receiver:before {

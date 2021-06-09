@@ -53,7 +53,7 @@
           </div>
 
           <div v-for="(chat, indx) in chats" :key="'chatmessage_'+indx"
-               :class="['whatsapp-chat-message',(chat.sender)?'whatsapp-chat-messages__sender':'whatsapp-chat-messages__receiver']">
+               :class="['whatsapp-chat-message',(chat.sender)?'whatsapp-chat-messages__sender':'whatsapp-chat-messages__receiver', (chat.check)?'high-top':'normal-top']">
             <div class="whatsapp-image" v-if="chat.images.length === 1">
               <div class="overlay" v-if="chat.message.length <=0"></div>
               <img style="width: 100%;" :src="chat.images[0]" />
@@ -73,7 +73,7 @@
             </div>
             <span v-html="replaceEmojis(chat.message) + generateMessageTime(chat)">
             </span>
-            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'no-text':'']">{{ chat.time.slice(0,5) }}
+            <span v-if="chat.message.length >0 || chat.images.length <= 1" :class="['whatsapp-chat-messages__datetime',(chat.message.length <=0 && chat.images.length > 0)?'':'']">{{ chat.time.slice(0,5) }}
                 <span v-if="chat.sender">
                 <i class="material-icons checkmark" v-if="chat.state==='read'">&#xe877;</i>
                 <i class="material-icons" v-else-if="chat.state==='received'">&#xe877;</i>
@@ -627,10 +627,24 @@ input, button, textarea {
   padding: 7px;
   display: flex;
   flex-wrap: wrap;
-  margin-top: 8px;
   border-radius: 5px;
-  
   position: relative;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__receiver.high-top {
+  margin-top: 8px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__receiver.normal-top {
+  margin-top: 2px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__sender.high-top {
+  margin-top: 8px;
+}
+
+.whatsapp-chat-message.whatsapp-chat-messages__sender.normal-top {
+  margin-top: 2px;
 }
 
 .whatsapp-chat-messages__sender:before, .whatsapp-chat-messages__receiver:before {

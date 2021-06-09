@@ -49,6 +49,9 @@
     <span class="text-input-icon right" @click="addmessage">
       <i class="material-icons">send</i>
     </span>
+    <span class="text-input-icon right return" @click="insertBreak">
+      <i class="material-icons">segment</i>
+    </span>
     <span class="text-input-icon right next" @click="displayicon=!displayicon;">
       <i class="material-icons">emoji_emotions</i>
     </span>
@@ -81,7 +84,7 @@ export default {
       displayicon: false,
       localSelectedMessage: -1,
       page: 0,
-      serverIp: "http://195.90.213.91/whatsapp_backend"
+      serverIp: "http://192.168.109.22/whatsapp_backend"
     }
   },
   watch: {
@@ -168,6 +171,11 @@ export default {
       this.newmessageinput = ""
       this.displayicon = false
       this.tmpFiles = []
+    },
+    insertBreak() {
+      let messageInput = this.$refs.newmessageinput;
+      let cursorPosition = messageInput.selectionStart;
+      this.newmessageinput = this.newmessageinput.substr(0, cursorPosition) + ":99999:" + this.newmessageinput.substr(cursorPosition, messageInput.length);
     },
     addimage(e) {
       let self = this;
@@ -335,6 +343,7 @@ export default {
   border-bottom: 2px solid #FFFFFF;
   color: #ffffff;
   padding: 5px 40px;
+  padding-right: 116px;
 }
 
 input:focus {
@@ -361,7 +370,11 @@ input:focus {
   left: auto;
 }
 .text-input-icon.right.next {
-  right: 50px;
+  right: 40px;
+  left: auto;
+}
+.text-input-icon.right.return {
+  right: 80px;
   left: auto;
 }
 .checkmark {

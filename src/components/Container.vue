@@ -190,7 +190,7 @@ export default {
       selectedOS: "android",
       IconList,
       IconListAndroid,
-      serverIp: "http://195.90.213.91/whatsapp_backend",
+      serverIp: "http://192.168.109.22/whatsapp_backend",
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
@@ -448,6 +448,7 @@ export default {
         });
     },
     generateChat() {
+      let self = this;
       let tmpChatLeft = this.chatLeft;
       for (let i = 0; i < tmpChatLeft.length; i++) {
         tmpChatLeft[i].sender = false;
@@ -459,7 +460,28 @@ export default {
 
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
-      this.chats = fullchat;
+
+      self.log("fullchat", fullchat);
+
+      while (self.chats.length > 0) {
+        self.chats.pop();
+      }
+
+      let preNode = null;
+      let check = false;
+      fullchat.forEach((element, index) => {
+        if(index === 0) {
+          check = true;
+        } else if(element.sender === preNode.sender) {
+          check = false;
+        } else {
+          check = true;
+        }
+        element.check = check;
+        this.chats.push(element);
+        preNode = element;
+      });
+      self.log("chats", this.chats);
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -638,7 +660,7 @@ export default {
                   while (self.chats.length > 0) {
                     self.chats.pop();
                   }
-                  window.location.href = "http://195.90.213.91";
+                  window.location.href = "http://192.168.109.22";
                 }
               })
               .catch(function (error) {
