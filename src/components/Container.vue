@@ -20,6 +20,21 @@
           <button class="print-button__content" @click="makeScreen">
             Screenshot erstellen und Herunterladen
           </button>
+          <div class="preview-thumb">
+            <div
+              v-for="(screen, index) in screens"
+              :key="'chatmessage_' + index"
+              class="thumb-gallery"
+            >
+              <img
+                class="thumb-image"
+                @click="modalThumb(screen)"
+                :key="index"
+                :src="screen.file_path"
+              />
+            </div>
+          </div>
+
           <a
             style="display: none"
             id="create_screenshot_and_print"
@@ -136,6 +151,20 @@
       />
     </div>
     <vue-confirm-dialog />
+    <modal
+      :height="500"
+      :width="400"
+      :shiftY="0.4"
+      :clickToClose="true"
+      name="thumb-preview-modal"
+    >
+      <div class="modal-content">
+        <img class="thumb-image" :src="selectThumb.file_path" />
+      </div>
+      <div class="modal-footer">
+        <button @click="removeThumb">Remove</button>
+      </div>
+    </modal>
   </div>
 </template>
 
@@ -147,6 +176,7 @@ import html2canvas from "html2canvas";
 import IconList from "../../public/ios/icons.json";
 import IconListAndroid from "../../public/android/icons.json";
 import axios from "axios";
+
 import vSelect from "vue-select";
 import "vue-select/dist/vue-select.css";
 
@@ -198,7 +228,8 @@ export default {
       screenHeight: "572",
       delCss: "none",
       postIndex: 0,
-      loadingBar: false
+      loadingBar: false,
+      selectThumb: [],
     };
   },
   watch: {
@@ -209,11 +240,18 @@ export default {
       this.generateChat();
     },
   },
+
   methods: {
     log(title, message) {
       console.groupCollapsed(title);
       console.log("message", message);
       console.groupEnd();
+    },
+    showModal() {
+      this.$modal.show("thumb-preview-modal");
+    },
+    hideModal() {
+      this.$modal.hide("thumb-preview-modal");
     },
     setTime(time) {
       this.time = time;
@@ -268,6 +306,23 @@ export default {
         link.href = url;
       });
     },
+    modalThumb(screen) {
+      let self = this;
+      self.selectThumb = screen;
+      self.showModal();
+    },
+    removeThumb() {
+      let delIndex = 0;
+      let self = this;
+      self.screens.forEach((screen, index) => {
+        if (screen.file_path === self.selectThumb.file_path) {
+          delIndex = index;
+        }
+      });
+      self.screens.splice(delIndex, 1);
+      self.hideModal();
+      // self.showAlert("Successfully removed!");
+    },
     generateScreen() {
       let link = document.getElementById("create_screenshot_and_print");
       let self = this;
@@ -297,7 +352,8 @@ export default {
                 file_path: self.serverIp + response.data.file_path,
                 file_name: response.data.file_name,
               });
-              link.click();
+              // link.click();
+              self.showAlert("Successfully uploaded the image! :)");
             })
             .catch(function (error) {
               self.log("error", error);
@@ -461,8 +517,6 @@ export default {
       let fullchat = tmpChatLeft.concat(tmpChatRight);
       fullchat.sort(this.compareTwoTimes);
 
-      self.log("fullchat", fullchat);
-
       while (self.chats.length > 0) {
         self.chats.pop();
       }
@@ -470,9 +524,9 @@ export default {
       let preNode = null;
       let check = false;
       fullchat.forEach((element, index) => {
-        if(index === 0) {
+        if (index === 0) {
           check = true;
-        } else if(element.sender === preNode.sender) {
+        } else if (element.sender === preNode.sender) {
           check = false;
         } else {
           check = true;
@@ -481,7 +535,6 @@ export default {
         this.chats.push(element);
         preNode = element;
       });
-      self.log("chats", this.chats);
     },
     compareTwoTimes(a, b) {
       const time_a = Date.parse("01/01/2011 " + a.time);
@@ -507,7 +560,7 @@ export default {
         left: true,
         right: false,
         showClose: true,
-        closeDelay: 4500
+        closeDelay: 4500,
       });
     },
     async post(formData, curTime) {
@@ -523,9 +576,9 @@ export default {
         self.loadingBar = false;
         if (curTime !== null) {
           self.loadOptions.push(curTime);
-          self.showAlert("saved successfully!")
+          self.showAlert("saved successfully!");
         } else {
-          self.showAlert("updated successfully!")
+          self.showAlert("updated successfully!");
         }
       }
     },
@@ -542,48 +595,54 @@ export default {
          * @param {Boolean} confirm
          */
         callback: (confirm) => {
-          self.loadingBar = true;
           var formData = new FormData();
           if (confirm) {
             // ... do something
-            let curTime = this.generateToday();
+            this.$prompt("Input your name").then((text) => {
+              // do somthing with text
+              self.loadingBar = true;
+              let curTime = text + " (" + this.generateToday() + ")";
 
-            formData.append("time", curTime);
-            formData.append("avatar", self.profilePath);
-            formData.append("background", self.background);
-            formData.append("name", self.name);
-            formData.append("lastseen", self.lastSeen);
+              formData.append("time", curTime);
+              formData.append("avatar", self.profilePath);
+              formData.append("background", self.background);
+              formData.append("name", self.name);
+              formData.append("lastseen", self.lastSeen);
 
-            axios
-              .post(self.serverIp + "/api/conversation_insert", formData, {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              })
-              .then(function (response) {
-                self.postIndex = self.chats.length;
-                self.chats.forEach((chat) => {
-                  var formData = new FormData();
-                  let images = "";
-                  chat.images.forEach((image) => {
-                    images += image + ":::";
+              axios
+                .post(self.serverIp + "/api/conversation_insert", formData, {
+                  headers: {
+                    "Content-Type": "multipart/form-data",
+                  },
+                })
+                .then(function (response) {
+                  self.postIndex = self.chats.length;
+                  self.chats.forEach((chat) => {
+                    var formData = new FormData();
+                    let images = "";
+                    chat.images.forEach((image) => {
+                      images += image + ":::";
+                    });
+                    formData.append("images", images);
+                    formData.append("sender", chat.sender === true ? "1" : "0");
+                    formData.append("state", chat.state);
+                    formData.append("time", chat.time);
+                    formData.append("message", chat.message);
+                    formData.append("con_id", response.data);
+                    self.post(formData, curTime);
                   });
-                  formData.append("images", images);
-                  formData.append("sender", chat.sender === true ? "1" : "0");
-                  formData.append("state", chat.state);
-                  formData.append("time", chat.time);
-                  formData.append("message", chat.message);
-                  formData.append("con_id", response.data);
-                  self.post(formData, curTime);
+                })
+                .catch(function (error) {
+                  self.log("error", error);
+                  self.showAlert("Save failed :(");
+                  self.loadingBar = false;
                 });
-              })
-              .catch(function (error) {
-                self.log("error", error);
-                self.showAlert("Save failed :(");
-              });
+            });
           } else {
+            self.loadingBar = true;
             if (self.curLoadMode === "") {
-              self.showAlert("Please load the conversation! :(")
+              self.showAlert("Please load the conversation! :(");
+              self.loadingBar = false;
               return;
             }
             formData.append("time", self.curLoadMode);
@@ -638,6 +697,7 @@ export default {
           var formData = new FormData();
           if (confirm) {
             // ... do something
+
             formData.append("time", self.loadmode);
 
             axios
@@ -728,6 +788,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 120%;
 }
 
 .del {
@@ -952,5 +1013,55 @@ input[type="radio"]:checked + label {
   border: 1px solid white;
   height: 37px;
   color: white;
+}
+
+.preview-thumb {
+  width: 500px;
+}
+
+.thumb-gallery {
+  display: inline;
+}
+
+.thumb-image {
+  cursor: pointer;
+  display: inline;
+  height: 42px;
+  margin: 0 4px;
+  position: relative;
+  vertical-align: middle;
+  margin-top: 1rem;
+}
+
+.modal-content {
+  margin-top: 1rem;
+}
+
+.modal-content .thumb-image {
+  height: 400px;
+}
+
+.modal-footer button {
+  border: none;
+  display: inline-block;
+  padding: 8px 16px;
+  vertical-align: middle;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  background-color: inherit;
+  text-align: center;
+  cursor: pointer;
+  white-space: nowrap;
+  background-color: #04aa6d !important;
+  color: white !important;
+  font-size: 17px;
+  border: 1px solid #cccccc;
+  border-radius: 5px;
+  margin-top: 1rem;
+}
+
+.modal-footer button:hover {
+  background-color: rgb(86, 214, 167)!important;
 }
 </style>

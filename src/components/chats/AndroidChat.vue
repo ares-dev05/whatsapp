@@ -341,7 +341,6 @@ export default {
     },
     replaceEmojis(message) {
       let self = this
-      self.log("message", message);
       let replaced = message.replace(/:(\d*?):/g, function(a, b){
         if(b == 99999) {
           return '<br />'
