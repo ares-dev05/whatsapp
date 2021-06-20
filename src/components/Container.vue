@@ -46,6 +46,9 @@
     <div class="save-button">
       <button class="save-button__content" @click="makeSave">Save</button>
     </div>
+    <div class="video-button">
+      <button class="video-button__content" @click="makeVideo">Video</button>
+    </div>
     <div class="json-button">
       <input type="text" v-model="jsonTip" id="jsontip" value="" />
       <button class="json-button__content" @click="makeJson">Json</button>
@@ -121,6 +124,10 @@
         id="chat_to_print_android"
         :chats="chats"
         :chatsHeight="screenHeight"
+        :iconState:="iconState"
+        :initIcons="androidIcons"
+        ref="androidchat"
+        @update="onAndroidIconsUpdate"
         v-bind:style="{
           height: Number(screenHeight) + 26 + 'px',
         }"
@@ -136,6 +143,10 @@
         id="chat_to_print_ios"
         :chats="chats"
         :chatsHeight="screenHeight"
+        :icons="iosIcons"
+        :initIcons="iosIcons"
+        ref="ioschat"
+        @update="onIOSIconsUpdate"
         v-bind:style="{
           height: Number(screenHeight) + 26 + 5 + 'px',
         }"
@@ -202,6 +213,25 @@ export default {
       .catch(function (error) {
         self.log("error", error);
       });
+
+    this.androidIcons = {
+      wifi: "off",
+      battery: "full",
+      showbatterytext: true,
+      sim: "full",
+      rotate: "on",
+      displayLastOnline: true,
+      batteryPercent: 100,
+    };
+    this.iosIcons = {
+      showbatterytext: true,
+      signal: "on",
+      displayLastOnline: true,
+      batteryPercent: 100,
+      signalStrengt: 4,
+      battery: "full",
+      network: "wifi",
+    };
   },
   data() {
     return {
@@ -221,6 +251,7 @@ export default {
       IconList,
       IconListAndroid,
       serverIp: "http://192.168.109.22/whatsapp_backend",
+      videoServerIp: "http://192.168.109.22:3000/",
       jsonTip: "",
       loadmode: "",
       curLoadMode: "",
@@ -230,6 +261,30 @@ export default {
       postIndex: 0,
       loadingBar: false,
       selectThumb: [],
+      videoFlag: false,
+      videoIndex: 0,
+      lastVideoIndex: 0,
+      videoThumbCount: 0,
+      androidIcons: {},
+      iosIcons: {},
+      iconState: {},
+      androidIcon: {
+        battery: "full",
+        displayLastOnline: true,
+        rotate: "on",
+        showbatterytext: true,
+        sim: "full",
+        wifi: "",
+      },
+      iosIcon: {
+        battery: "full",
+        batteryPercent: "61",
+        displayLastOnline: true,
+        network: "wifi",
+        showbatterytext: true,
+        signal: "on",
+        signalStrengt: "2",
+      },
     };
   },
   watch: {
@@ -246,6 +301,19 @@ export default {
       console.groupCollapsed(title);
       console.log("message", message);
       console.groupEnd();
+    },
+    onAndroidIconsUpdate(newValue) {
+      this.androidIcons = newValue;
+      this.log("onAndroidIconsUpdate", this.androidIcons);
+    },
+    onIOSIconsUpdate(newValue) {
+      this.iosIcons = newValue;
+      this.log("onIOSIconsUpdate", this.iosIcons);
+    },
+    padLeadingZeros(num, size) {
+      var s = num + "";
+      while (s.length < size) s = "0" + s;
+      return s;
     },
     showModal() {
       this.$modal.show("thumb-preview-modal");
@@ -286,11 +354,12 @@ export default {
       return new Blob([ia], { type: mimeString });
     },
     makeScreen() {
+      console.log("iconState", this.iconState);
       this.previewScreen();
       this.previewScreen();
       this.previewScreen();
       this.previewScreen();
-      this.generateScreen();
+      this.generateScreen(0, 0);
     },
     previewScreen() {
       let link = document.getElementById("create_screenshot_and_print");
@@ -323,7 +392,7 @@ export default {
       self.hideModal();
       // self.showAlert("Successfully removed!");
     },
-    generateScreen() {
+    generateScreen(mode, order) {
       let link = document.getElementById("create_screenshot_and_print");
       let self = this;
 
@@ -333,33 +402,64 @@ export default {
         useCORS: true,
         letterRendering: true,
         backgroundColor: "#000",
-      }).then((canvas) => {
-        let url = canvas.toDataURL("image/jpeg");
-        link.href = url;
+      })
+        .then((canvas) => {
+          let url = canvas.toDataURL("image/jpeg");
+          link.href = url;
 
-        canvas.toBlob(function (blob) {
-          var formData = new FormData();
-          formData.append("file", blob, "image.jpg");
-          axios
-            .post(self.serverIp + "/api/screen_insert", formData, {
-              headers: {
-                "Content-Type": "multipart/form-data",
-              },
-            })
-            .then(function (response) {
-              self.screens.push({
-                file_id: response.data.file_id,
-                file_path: self.serverIp + response.data.file_path,
-                file_name: response.data.file_name,
-              });
-              // link.click();
-              self.showAlert("Successfully uploaded the image! :)");
-            })
-            .catch(function (error) {
-              self.log("error", error);
-            });
-        }, "image/jpeg");
-      });
+          canvas.toBlob(function (blob) {
+            var formData = new FormData();
+            if (mode == 0) {
+              formData.append("file", blob, "image.png");
+              axios
+                .post(self.serverIp + "/api/screen_insert", formData, {
+                  headers: {
+                    "Content-Type": "multipart/form-data",
+                  },
+                })
+                .then(function (response) {
+                  self.screens.push({
+                    file_id: response.data.file_id,
+                    file_path: self.serverIp + response.data.file_path,
+                    file_name: response.data.file_name,
+                  });
+                  // link.click();
+                  self.showAlert("Successfully uploaded the image! :)");
+                })
+                .catch(function (error) {
+                  self.log("error", error);
+                });
+            } else {
+              formData.append(
+                "file",
+                blob,
+                "frame-" + self.padLeadingZeros(order, 6) + ".jpeg"
+              );
+              axios
+                .post(self.serverIp + "/api/screen_video_insert", formData, {
+                  headers: {
+                    "Content-Type": "multipart/form-data",
+                  },
+                })
+                .then(function (response) {
+                  // link.click();
+                  self.log("resposne", response);
+                  self.videoIndex += 10;
+                  self.videoThumbCount++;
+                  self.video_post();
+                })
+                .catch(function (error) {
+                  self.log("error", error);
+                });
+            }
+          }, "image/jpeg");
+        })
+        .catch((e) => {
+          self.log("error", e);
+          if (mode == 1) {
+            self.video_post();
+          }
+        });
     },
     deleteList() {
       let self = this;
@@ -474,30 +574,40 @@ export default {
           self.chatRight.sort(self.compareTwoTimes);
           self.generateChat();
           self.curLoadMode = self.loadmode;
-        })
-        .catch(function (error) {
-          self.log("error", error);
-        });
 
-      axios
-        .post(self.serverIp + "/api/conversation_getDataByTime", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
-        .then(function (response) {
-          self.profilePath = response.data.avatar;
-          if (self.profilePath !== "") {
-            self.profilePicture = response.data.avatar;
-          } else {
-            self.profilePicture = `${require("@/assets/images/no_profile_picture.png")}`;
-          }
-          self.background = response.data.background;
-          if (self.background === "") {
-            self.background = `${require("@/assets/images/default_wallpaper_android.png")}`;
-          }
-          self.name = response.data.name;
-          self.lastSeen = response.data.lastseen;
+          axios
+            .post(self.serverIp + "/api/conversation_getDataByTime", formData, {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            })
+            .then(function (response) {
+              self.log("<- response ->", response);
+              self.profilePath = response.data.avatar;
+              if (self.profilePath !== "") {
+                self.profilePicture = response.data.avatar;
+              } else {
+                self.profilePicture = `${require("@/assets/images/no_profile_picture.png")}`;
+              }
+              self.background = response.data.background;
+              if (self.background === "") {
+                self.background = `${require("@/assets/images/default_wallpaper_android.png")}`;
+              }
+              self.name = response.data.name;
+              self.lastSeen = response.data.lastseen;
+
+              self.androidIcons = JSON.parse(response.data.androidIcons);
+              self.iosIcons = JSON.parse(response.data.iosIcons);
+
+              self.$refs.androidchat.refreshIcons(self.androidIcons);
+              self.$refs.ioschat.refreshIcons(self.iosIcons);
+
+              self.setTime(response.data.time);
+
+            })
+            .catch(function (error) {
+              self.log("conversation_getDataByTime -> error", error);
+            });
         })
         .catch(function (error) {
           self.log("error", error);
@@ -563,6 +673,63 @@ export default {
         closeDelay: 4500,
       });
     },
+    makeVideo() {
+      let self = this;
+      self.loadingBar = true;
+      var element = document.getElementsByClassName(
+        "whatsapp-chat-messages"
+      )[0];
+
+      var topPos = element.offsetTop - 70;
+      var bottomPos = topPos + element.scrollHeight - 462;
+      // element.scrollTop = topPos + 20;
+      self.lastVideoIndex = bottomPos;
+      self.videoIndex = topPos;
+      element.scrollTop = self.videoIndex;
+
+      self.videoFlag = false;
+      // self.loadingBar = true;
+      this.videoFlag = true;
+      self.videoIndex = topPos;
+      self.videoThumbCount = 0;
+      self.video_post();
+    },
+    async video_post() {
+      let self = this;
+      self.log("video_post");
+
+      var element = document.getElementsByClassName(
+        "whatsapp-chat-messages"
+      )[0];
+
+      self.log("videoIndex", self.videoIndex);
+      self.log("lastVideoIndex", self.lastVideoIndex);
+
+      if (self.videoIndex > self.lastVideoIndex) {
+        self.loadingBar = false;
+        self.showAlert("render successfully!");
+        self.videoRenderPost();
+        return;
+      }
+      element.scrollTop = self.videoIndex;
+      this.previewScreen();
+      this.previewScreen();
+      this.previewScreen();
+      this.previewScreen();
+      this.generateScreen(1, self.videoThumbCount);
+      self.videoFlag = true;
+    },
+    async videoRenderPost() {
+      let self = this;
+      self.loadingBar = false;
+      await axios.post(self.videoServerIp + "run", null, {}).then(() => {
+        axios.post(self.videoServerIp + "delete", null, {}).then(() => {
+          let link = document.getElementById("create_screenshot_and_print");
+          link.href = self.videoServerIp + "download";
+          link.click();
+        });
+      });
+    },
     async post(formData, curTime) {
       let self = this;
       await axios.post(self.serverIp + "/api/message_insert", formData, {
@@ -576,7 +743,7 @@ export default {
         self.loadingBar = false;
         if (curTime !== null) {
           self.loadOptions.push(curTime);
-          self.showAlert("saved successfully!");
+          self.showAlert("saved sdfsdf successfully!");
         } else {
           self.showAlert("updated successfully!");
         }
@@ -608,6 +775,18 @@ export default {
               formData.append("background", self.background);
               formData.append("name", self.name);
               formData.append("lastseen", self.lastSeen);
+              formData.append("ptime", self.time);
+
+
+              self.log("androidtime", );
+              self.log("iostime", );
+              
+
+              formData.append(
+                "androidIcons",
+                JSON.stringify(self.androidIcons)
+              );
+              formData.append("iosIcons", JSON.stringify(self.iosIcons));
 
               axios
                 .post(self.serverIp + "/api/conversation_insert", formData, {
@@ -650,6 +829,10 @@ export default {
             formData.append("background", self.background);
             formData.append("name", self.name);
             formData.append("lastseen", self.lastSeen);
+            formData.append("androidIcons", JSON.stringify(self.androidIcons));
+            formData.append("iosIcons", JSON.stringify(self.iosIcons));
+            formData.append("ptime", self.time);
+
             axios
               .post(self.serverIp + "/api/conversation_getByTime", formData, {
                 headers: {
@@ -720,7 +903,7 @@ export default {
                   while (self.chats.length > 0) {
                     self.chats.pop();
                   }
-                  window.location.href = "http://192.168.109.22";
+                  window.location.href = "http://192.168.109.22:8080";
                 }
               })
               .catch(function (error) {
@@ -788,7 +971,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  width: 120%;
+  width: 320%;
 }
 
 .del {
@@ -871,6 +1054,34 @@ export default {
   display: inline-block;
   cursor: pointer;
   padding: 0.8rem 5.5rem 0.8rem 2.5rem;
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  box-shadow: none;
+  border: 1px solid #ffffff;
+  border-radius: 3px;
+  transition: 0.3s;
+  background: transparent;
+}
+
+.video-button {
+  position: absolute;
+  right: -5.4rem;
+  top: 2rem;
+}
+
+.video-button:hover {
+  right: -2rem;
+}
+
+.video-button__content:hover {
+  background-color: #c40004;
+}
+
+.video-button__content {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0.8rem 5.5rem 0.8rem 2.3rem;
   color: white;
   text-decoration: none;
   font-size: 25px;
@@ -1062,6 +1273,6 @@ input[type="radio"]:checked + label {
 }
 
 .modal-footer button:hover {
-  background-color: rgb(86, 214, 167)!important;
+  background-color: rgb(86, 214, 167) !important;
 }
 </style>
