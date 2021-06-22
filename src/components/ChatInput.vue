@@ -166,8 +166,6 @@ export default {
         images: this.tmpFiles,
         state: 'send'
       })
-      let last_chat_element = document.getElementById("empty-container-" + this.identifier)
-      last_chat_element.scrollIntoView({behavior: 'smooth'});
       this.newmessageinput = ""
       this.displayicon = false
       this.tmpFiles = []
@@ -249,6 +247,7 @@ export default {
   margin: 0 auto;
   color: #FFFFFF;
   overflow: hidden;
+  height: 61.9vh;
 }
 
 .image-display {

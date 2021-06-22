@@ -40,6 +40,11 @@
             id="create_screenshot_and_print"
             download="screenshot.png"
           ></a>
+          <a
+            style="display: none"
+            id="download_video"
+            download="video.mp4"
+          ></a>
         </div>
       </h1>
     </div>
@@ -104,14 +109,25 @@
         gridTemplateColumns: '1fr calc(' + screenWidth + 'px) 1fr',
       }"
     >
-      <ChatInput
-        :selectedOs="selectedOS"
+    <iOSChat
         :emojis="IconList"
-        :is-sender="false"
-        @input="generateChat"
-        :value="chatLeft"
-        headline="Links"
-        identifier="left"
+        :profile-picture="profilePicture"
+        :background-image="background"
+        :time="time"
+        :lastSeen="lastSeen"
+        :name="name"
+        class="colGrid2"
+        v-show="selectedOS === 'ios'"
+        id="chat_to_print_ios"
+        :chats="chats"
+        :chatsHeight="screenHeight"
+        :icons="iosIcons"
+        :initIcons="iosIcons"
+        ref="ioschat"
+        @update="onIOSIconsUpdate"
+        v-bind:style="{
+          height: Number(screenHeight) + 26 + 5 + 'px',
+        }"
       />
       <AndroidChat
         :emojis="IconListAndroid"
@@ -127,40 +143,41 @@
         :iconState:="iconState"
         :initIcons="androidIcons"
         ref="androidchat"
+        class="colGrid2"
         @update="onAndroidIconsUpdate"
         v-bind:style="{
           height: Number(screenHeight) + 26 + 'px',
         }"
       />
-      <iOSChat
-        :emojis="IconList"
-        :profile-picture="profilePicture"
-        :background-image="background"
-        :time="time"
-        :lastSeen="lastSeen"
-        :name="name"
-        v-show="selectedOS === 'ios'"
-        id="chat_to_print_ios"
-        :chats="chats"
-        :chatsHeight="screenHeight"
-        :icons="iosIcons"
-        :initIcons="iosIcons"
-        ref="ioschat"
-        @update="onIOSIconsUpdate"
-        v-bind:style="{
-          height: Number(screenHeight) + 26 + 5 + 'px',
-        }"
-      />
-      <ChatInput
-        :selectedOs="selectedOS"
-        :emojis="IconList"
-        :is-sender="true"
-        @input="generateChat"
-        :value="chatRight"
-        headline="Rechts"
-        identifier="right"
-      />
+      
+
+      <div class="colGrid1">
+        <ChatInput
+          :selectedOs="selectedOS"
+          :emojis="IconList"
+          :is-sender="false"
+          @input="generateChat"
+          :value="chatLeft"
+          headline="Links"
+          identifier="left"
+        />
+      </div>
+      <div class="colGrid3">
+        <ChatInput
+          :selectedOs="selectedOS"
+          :emojis="IconList"
+          :is-sender="true"
+          @input="generateChat"
+          :value="chatRight"
+          headline="Rechts"
+          identifier="right"
+        />
+      </div>
     </div>
+    <canvas
+      id="background-canvas"
+      style="position: absolute; top: -99999999px; left: -9999999999px"
+    ></canvas>
     <vue-confirm-dialog />
     <modal
       :height="500"
@@ -190,6 +207,7 @@ import axios from "axios";
 
 import vSelect from "vue-select";
 import "vue-select/dist/vue-select.css";
+import * as RecordRTC from "../RecordRTC";
 
 export default {
   name: "Container",
@@ -285,6 +303,10 @@ export default {
         signal: "on",
         signalStrengt: "2",
       },
+      tempChats: [],
+      recorder: null,
+      isStoppedRecording: true,
+      isRecordingStarted: false,
     };
   },
   watch: {
@@ -354,7 +376,6 @@ export default {
       return new Blob([ia], { type: mimeString });
     },
     makeScreen() {
-      console.log("iconState", this.iconState);
       this.previewScreen();
       this.previewScreen();
       this.previewScreen();
@@ -404,6 +425,7 @@ export default {
         backgroundColor: "#000",
       })
         .then((canvas) => {
+          console.log("canvas", canvas);
           let url = canvas.toDataURL("image/jpeg");
           link.href = url;
 
@@ -444,7 +466,7 @@ export default {
                 .then(function (response) {
                   // link.click();
                   self.log("resposne", response);
-                  self.videoIndex += 10;
+                  // self.videoIndex += 10;
                   self.videoThumbCount++;
                   self.video_post();
                 })
@@ -582,7 +604,6 @@ export default {
               },
             })
             .then(function (response) {
-              self.log("<- response ->", response);
               self.profilePath = response.data.avatar;
               if (self.profilePath !== "") {
                 self.profilePicture = response.data.avatar;
@@ -603,7 +624,6 @@ export default {
               self.$refs.ioschat.refreshIcons(self.iosIcons);
 
               self.setTime(response.data.time);
-
             })
             .catch(function (error) {
               self.log("conversation_getDataByTime -> error", error);
@@ -615,16 +635,18 @@ export default {
     },
     generateChat() {
       let self = this;
-      let tmpChatLeft = this.chatLeft;
-      for (let i = 0; i < tmpChatLeft.length; i++) {
-        tmpChatLeft[i].sender = false;
-      }
+
       let tmpChatRight = this.chatRight;
       for (let j = 0; j < tmpChatRight.length; j++) {
         tmpChatRight[j].sender = true;
       }
 
-      let fullchat = tmpChatLeft.concat(tmpChatRight);
+      let tmpChatLeft = this.chatLeft;
+      for (let i = 0; i < tmpChatLeft.length; i++) {
+        tmpChatLeft[i].sender = false;
+      }
+
+      let fullchat = tmpChatRight.concat(tmpChatLeft);
       fullchat.sort(this.compareTwoTimes);
 
       while (self.chats.length > 0) {
@@ -642,7 +664,7 @@ export default {
           check = true;
         }
         element.check = check;
-        this.chats.push(element);
+        self.chats.push(element);
         preNode = element;
       });
     },
@@ -673,62 +695,155 @@ export default {
         closeDelay: 4500,
       });
     },
+    sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    },
+    async init() {
+      let self = this;
+      while (self.chats.length > 0) {
+        let msg = self.chats.pop();
+        self.tempChats.push(msg);
+      }
+
+      while (self.chatRight.length > 0) {
+        self.chatRight.pop();
+      }
+      while (self.chatLeft.length > 0) {
+        self.chatLeft.pop();
+      }
+    },
+    async demo() {
+      // Sleep in loop
+
+      let self = this;
+
+      while (self.tempChats.length > 0) {
+        await this.sleep(2500);
+        let msg = self.tempChats.pop();
+        if (msg.sender === false) {
+          self.chatLeft.push(msg);
+        } else {
+          self.chatRight.push(msg);
+        }
+
+        var element = document.getElementsByClassName(
+          "whatsapp-chat-messages"
+        )[1];
+
+        if( this.selectedOS != "android") {
+          element = document.getElementsByClassName(
+            "whatsapp-chat-messages"
+          )[0];
+        }
+
+        console.log("element",element)
+
+        var topPos = element.offsetTop;
+        // var bottomPos = topPos + element.scrollHeight;
+
+        var last = document.getElementById("last-chat-element-" + self.selectedOS);
+
+        var dif = last.scrollHeight + last.offsetTop - topPos + 200;
+
+        console.log("topPos", topPos);
+        console.log("last.scrollHeight", last.scrollHeight);
+        console.log("last.offsetTo", last.offsetTop);
+
+        var i = 0;
+        var pros = [20, 20, 12, 10, 10, 10, 12, 16, 20];
+        while (i < 9) {
+          let position = dif / pros[i];
+          if (isNaN(position)) {
+            break;
+          }
+          element.scrollTop += position;
+          last.scrollIntoView({ behavior: "smooth", block: "end" });
+          i++;
+          await this.sleep(25);
+        }
+      }
+      
+      await this.sleep(2500);
+      self.recorder.stopRecording(function () {
+        self.isStoppedRecording = true;
+        self.isRecordingStarted = false;
+        let link = document.getElementById("download_video");
+        var blob = self.recorder.getBlob();
+        link.href = URL.createObjectURL(blob);
+        link.click();
+
+        // window.open(URL.createObjectURL(blob));
+      });
+    },
     makeVideo() {
       let self = this;
-      self.loadingBar = true;
-      var element = document.getElementsByClassName(
-        "whatsapp-chat-messages"
-      )[0];
 
-      var topPos = element.offsetTop - 70;
-      var bottomPos = topPos + element.scrollHeight - 462;
-      // element.scrollTop = topPos + 20;
-      self.lastVideoIndex = bottomPos;
-      self.videoIndex = topPos;
-      element.scrollTop = self.videoIndex;
-
-      self.videoFlag = false;
-      // self.loadingBar = true;
-      this.videoFlag = true;
-      self.videoIndex = topPos;
-      self.videoThumbCount = 0;
-      self.video_post();
-    },
-    async video_post() {
-      let self = this;
-      self.log("video_post");
-
-      var element = document.getElementsByClassName(
-        "whatsapp-chat-messages"
-      )[0];
-
-      self.log("videoIndex", self.videoIndex);
-      self.log("lastVideoIndex", self.lastVideoIndex);
-
-      if (self.videoIndex > self.lastVideoIndex) {
-        self.loadingBar = false;
-        self.showAlert("render successfully!");
-        self.videoRenderPost();
-        return;
+      while (self.chatRight.length > 0) {
+        self.chatRight.pop();
       }
-      element.scrollTop = self.videoIndex;
-      this.previewScreen();
-      this.previewScreen();
-      this.previewScreen();
-      this.previewScreen();
-      this.generateScreen(1, self.videoThumbCount);
-      self.videoFlag = true;
-    },
-    async videoRenderPost() {
-      let self = this;
-      self.loadingBar = false;
-      await axios.post(self.videoServerIp + "run", null, {}).then(() => {
-        axios.post(self.videoServerIp + "delete", null, {}).then(() => {
-          let link = document.getElementById("create_screenshot_and_print");
-          link.href = self.videoServerIp + "download";
-          link.click();
+      while (self.chatLeft.length > 0) {
+        self.chatLeft.pop();
+      }
+
+      while (self.tempChats.length > 0) {
+        self.tempChats.pop();
+      }
+
+      while (self.chats.length > 0) {
+        let msg = self.chats.pop();
+        self.tempChats.push(msg);
+      }
+
+      var elementToRecord = document.querySelector("#chat_to_print_" + self.selectedOS)
+      console.log("elementToRecord", elementToRecord)
+
+      var canvas2d = document.getElementById("background-canvas");
+      var context = canvas2d.getContext("2d");
+      // canvas2d.width = elementToRecord.clientWidth * 3;
+      // canvas2d.height = elementToRecord.clientHeight * 3;
+      canvas2d.width = elementToRecord.clientWidth * 2;
+      canvas2d.height = elementToRecord.clientHeight * 2;
+
+      (function looper() {
+        if (!self.isRecordingStarted) {
+          return setTimeout(looper, 100);
+        }
+
+        html2canvas(elementToRecord, {
+          scale: 3,
+          allowTaint: true,
+          useCORS: true,
+          letterRendering: true,
+          backgroundColor: "#000",
+        }).then(function (canvas) {
+          // let link = document.getElementById("create_screenshot_and_print");
+          // let url = canvas.toDataURL("image/jpeg");
+          // link.href = url;
+          // link.click();
+          // return;
+          context.clearRect(0, 0, canvas2d.width, canvas2d.height);
+          context.drawImage(canvas, 0, 0, canvas2d.width, canvas2d.height);
+          
+          if (self.isStoppedRecording) {
+            return;
+          }
+
+          requestAnimationFrame(looper);
         });
+      })();
+
+      this.recorder = new RecordRTC(canvas2d, {
+        type: "canvas",
       });
+
+      this.disabled = true;
+
+      self.isStoppedRecording = false;
+      self.isRecordingStarted = true;
+
+      this.recorder.startRecording();
+
+      self.demo();
     },
     async post(formData, curTime) {
       let self = this;
@@ -776,11 +891,6 @@ export default {
               formData.append("name", self.name);
               formData.append("lastseen", self.lastSeen);
               formData.append("ptime", self.time);
-
-
-              self.log("androidtime", );
-              self.log("iostime", );
-              
 
               formData.append(
                 "androidIcons",
@@ -1064,6 +1174,10 @@ export default {
   background: transparent;
 }
 
+.hideClass {
+  display: none;
+}
+
 .video-button {
   position: absolute;
   right: -5.4rem;
@@ -1156,6 +1270,20 @@ export default {
 
 .print-button__content:hover {
   background-color: #c40004;
+}
+
+.colGrid1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.colGrid2 {
+  grid-column: 2;
+}
+
+.colGrid3 {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 input[type="radio"] {

@@ -450,9 +450,7 @@ export default {
         )[0];
         var topPos = myElement.offsetTop;
         myElement.scrollTop = topPos + 20;
-        console.log("topPos", topPos);
         document.getElementById("chats").scrollTop = topPos;
-        console.log("scroll", this.$refs.toolbarChat);
       }
     },
     generateMessageTime(chat) {
@@ -551,8 +549,6 @@ export default {
           }
         });
       }
-
-      self.log("message", message);
 
       if (!replaced.startsWith("<div style") && message != "") {
         replaced =

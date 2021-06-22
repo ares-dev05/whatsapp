@@ -214,7 +214,7 @@
             </span>
           </div>
           <div
-            class="whatsapp-chat-message whatsapp-chat-messages__receiver"
+            class="whatsapp-chat-message"
             id="last-chat-element-android"
             style="height: 1px; margin-top: 30px; visibility: hidden"
           >
@@ -426,14 +426,14 @@ export default {
       displayEndToEnd: true,
       contextmenuValue: "",
       icons: {
-      wifi: "off",
-      battery: "full",
-      showbatterytext: true,
-      sim: "full",
-      rotate: "on",
-      displayLastOnline: true,
-      batteryPercent: 100,
-    },
+        wifi: "off",
+        battery: "full",
+        showbatterytext: true,
+        sim: "full",
+        rotate: "on",
+        displayLastOnline: true,
+        batteryPercent: 100,
+      },
       batteryCharge: {
         width: "10px",
       },
@@ -450,7 +450,9 @@ export default {
       let last_chat_element = document.getElementById(
         "last-chat-element-android"
       );
-      last_chat_element.scrollIntoView({ behavior: "smooth" });
+
+      last_chat_element.scrollIntoView({ behavior: "smooth", block: "end" });
+      // this.scrollToClass();
     },
   },
   mounted() {
@@ -464,11 +466,9 @@ export default {
     self.rerenderBattery(this.icons.batteryPercent);
     batteryElement.addEventListener("input", function () {
       self.rerenderBattery(batteryElement.innerText);
-      self.log("rerenderBattery", parseInt(batteryElement.innerText));
       self.icons.batteryPercent = parseInt(batteryElement.innerText);
       self.$emit("update", self.icons);
     });
-    
   },
   methods: {
     log(title, message) {
@@ -481,28 +481,8 @@ export default {
       batteryElement.innerText = icons.batteryPercent + " %";
       let self = this;
       self.icons = icons;
-      
-      self.rerenderBattery(icons.batteryPercent);
-    },
-    scrollToClass() {
-      // Get the first element with the given class name
-      let el = document.getElementsByClassName("whatsapp-chat-messages");
-      // Get the bounding rectangle so we can get the element position position
 
-      if (el != null) {
-        el.scroll({
-          top: 100,
-          behavior: "smooth",
-        });
-        var myElement = document.getElementsByClassName(
-          "whatsapp-chat-messages"
-        )[0];
-        var topPos = myElement.offsetTop;
-        myElement.scrollTop = topPos + 20;
-        console.log("topPos", topPos);
-        document.getElementById("chats").scrollTop = topPos;
-        console.log("scroll", this.$refs.toolbarChat);
-      }
+      self.rerenderBattery(icons.batteryPercent);
     },
     getTime() {
       let ele = document.getElementById("layout_time_android");
@@ -536,8 +516,6 @@ export default {
       }, 2000);
     },
     generateMessageTime(chat) {
-      let self = this;
-      self.log("generateMessageTime", chat.message.length);
       if (chat.message.length > 0 && chat.images.length <= 1) {
         let messageTime = "";
         let css =
@@ -636,9 +614,29 @@ export default {
       if (!replaced.startsWith("<div style") && message != "") {
         replaced =
           "<div style='font-size: 18px;float: left; display: inline;overflow-wrap: anywhere;'>" +
-          replaced;
+          replaced +
+          "</div>";
       }
       return replaced;
+    },
+    scrollToClass() {
+      // Get the first element with the given class name
+      let el = document.getElementsByClassName("whatsapp-chat-messages")[0];
+      // Get the bounding rectangle so we can get the element position position
+
+      if (el != null) {
+        el.scroll({
+          top: 100,
+          behavior: "smooth",
+        });
+        var element = document.getElementsByClassName(
+          "whatsapp-chat-messages"
+        )[0];
+        var topPos = element.offsetTop;
+        var bottomPos = topPos + element.scrollHeight + 500;
+        element.scrollTop = bottomPos;
+        element.scrollIntoView({ behavior: "smooth" });
+      }
     },
     nameChanged() {
       let ele = document.getElementById("contactname_android");
